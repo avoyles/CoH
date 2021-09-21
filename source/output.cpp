@@ -21,6 +21,9 @@ using namespace std;
 #include "elements.h"
 #include "global.h"
 
+#define PRINT_BANNER
+
+
 
 /**********************************************************/
 /*      Global Parameters                                 */
@@ -55,7 +58,7 @@ void outSetSigmaReaction(const int n)
 void outTitle(char *str)
 {
 #ifdef PRINT_BANNER
-  outBanner1();
+  outBanner();
 #endif
   outSectionHead(&version[0]);
   cout <<cline;

@@ -18,8 +18,8 @@ const int MAX_FISS_CHANCE   =    5 ;  /* total number of multi-chance fission  *
 #else
 const int MAX_ENERGY_BIN    = 1000 ;  /* maximum energy bins                   */
 const int MAX_CHANNEL       =    7 ;  /* maximum decay channel                 */
-const int MAX_COMPOUND      =  500 ;  /* maximum number of compound nucleus    */
-const int MAX_NUCLIDE       =  150 ;  /* number of unique nuclides in chain    */
+const int MAX_COMPOUND      =  900 ;  /* maximum number of compound nucleus    */
+const int MAX_NUCLIDE       =  350 ;  /* number of unique nuclides in chain    */
 const int MAX_DIRECT        =   10 ;  /* number of direct reaction             */
 const int MAX_FISS_CHANCE   =   20 ;  /* total number of multi-chance fission  */
 #endif
