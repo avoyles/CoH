@@ -1,0 +1,19 @@
+BEGIN    :  BeoH test input file for prompt fission calculation
+DATA     :
+target   :    U   235
+energy   : 0.0
+omp_n    : Koning
+bin      :  0.1
+ENDDATA  :
+
+FFRAG    :
+ffydata  :  file
+ffyfile  :  yzatp_Z092A235.dat
+rt       :  1.2
+spinfact :  3.0
+ycutoff  :  1e-6
+maxtemp  :   1.32
+
+#chicalc  :
+ENDFFRAG :
+END      :

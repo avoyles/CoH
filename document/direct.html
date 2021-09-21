@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<title> Optical and Hauser-Feshbach Statistical Model Code, CoH: input (direct)</title>
+<!-- Generated 2009/ 9/24, Last modified 2009/09/25 -->
+<meta http-equiv="content-type" content="text/html;charset=us-ascii">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body>
+
+<a href="optical.html">   [BACK] </a>
+<a href="index.html">      [UP]  </a>
+<a href="compound.html">  [NEXT] </a>
+<hr>
+
+<h1><a name="direct">Direct Reactions</a></h1>
+
+<h2><a name="dwba">DWBA Calculation</a></h2>
+
+<p>In addition to the <tt>DATA</tt> section, DWBA calculations for 
+inelastic scattering to a vibrational state requires another top
+level keyword <tt>DWBA</tt>. The next example calculates
+the neutron inelastic scattering on Fe56 to excite the first level
+2+ state.</p>
+
+<pre>
+BEGIN    :  DWBA to the first excited state
+DATA     :
+target   :        Fe        56
+incident :         n
+energy   :      10.0
+omp_n    : Koning
+level    : 0.000e+00       0.0
+ENDDATA  :
+DWBA     :
+level    :  0.8468+00      2.0      0.120
+nonloc   :  0.85
+ENDDWBA  :
+END      :
+</pre>
+
+<p> The <tt>DATA</tt> section is the same as the optical model
+calculation, so that with this input CoH first performs a normal
+spherical optical model calculation, then the DWBA direct cross
+section to the 846.8keV level is calculated. The <tt>level</tt> line,
+which defines the ground state spin, must be existed in this section.</p>
+
+<p>In the <tt>DWBA</tt>, there are two valid data-definition keywords.</p>
+
+<ul>
+<li> level    :</li>
+<li> nonloc   :</li>
+</ul>
+
+<p>The <tt>level</tt> is for the excited state information (excitation
+energy, spin, and &beta;<sub>L</sub> value, and the <tt>nonloc</tt> line
+is for the non-locality correction, which is empirically known to be
+0.85. </p>
+
+
+<h2><a name="dsd">Direct/Semidirect Capture Calculation</a></h2>
+
+<p>The direct/semidirect capture cross section is calculated when
+the top level keyword of <tt>DSD</tt> exists. Two data-definition
+keywords will be in this section.</p>
+
+<ul>
+<li> interact :</li>
+<li> nonloc   :</li>
+</ul>
+
+<p>and the input data file looks like</p>
+
+<pre>
+BEGIN    :  DSD calculation
+DATA     :
+incident :         n
+target   :        33        75
+energy   :      14.0
+omp_n    : Koning
+ENDDATA  :
+DSD      :
+interact :      90.0      70.0
+nonloc   :      0.85
+ENDDSD   :
+END      :
+</pre>
+
+<p>The <tt>nonloc</tt> keyword is the non-locality correction for the
+distorted wave. This is the same as that in the <tt>DWBA</tt> section,
+but treated independently.</p>
+
+<p>The <tt>interact</tt> line defines the coupling strength of the 
+semi-direct process. The first value is the real part, and the 
+second value is the imaginary part, both in MeV. If this keyword
+is omitted, CoH calculate the DSD cross sections with the internal
+values. Since the DSD cross sections are small,</p>
+
+<pre>
+BEGIN    :
+DATA     :
+incident :         n
+target   :        33        75
+energy   :      14.0
+omp_n    : Koning
+ENDDATA  :
+DSD      :
+ENDDSD   :
+END      :
+</pre>
+
+<p>the input like above should work for many cases.</p>
+
+
+<hr>
+<a href="optical.html">   [BACK] </a>
+<a href="index.html">      [UP]  </a>
+<a href="compound.html">  [NEXT] </a>
+</body>
+</html>

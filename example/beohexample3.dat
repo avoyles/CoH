@@ -1,0 +1,11 @@
+BEGIN    :  BeoH CGM compatible mode test input file
+DATA     :
+compound :     Xe 134
+omp_n    :  Koning
+exenergy :  15
+#initspin :  4.0 +
+spinfact :  1.0
+bin      :  0.1
+option   : internalconversion
+ENDDATA  :
+END      :

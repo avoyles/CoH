@@ -1,0 +1,307 @@
+/******************************************************************************/
+/*  gtrans.cpp                                                                */
+/*        Gamma-ray transmission coefficients                                 */
+/******************************************************************************/
+
+#include <iostream>
+#include <cmath>
+
+using namespace std;
+
+#include "physicalconstant.h"
+#include "structur.h"
+#include "statmodel.h"
+#include "parameter.h"
+
+static double  gdrStandardLorentzian    (int, double, GDR *);
+static double  gdrGeneralizedLorentzian (int, double, GDR *, double, double);
+static double  gdrModifiedLorentzian    (int, double, GDR *, double, double);
+static inline double  gdrProfileLorentzian     (double, double, double);
+static inline double  gdrTempDependGamma       (double, double, double, double);
+static inline double  gdrTempDependGamma2      (double, double, double, double);
+static inline double  gdrGammagSystematics     (int);
+
+static double gStrengthFunction = 1.0;
+static double gDropletGamma = 0.0;
+
+static GDR gdr[MAX_GDR];
+static int ngdr = 0;
+
+
+/**********************************************************/
+/*      Normalization Factor for M1 Transmission          */
+/**********************************************************/
+void gdrM1norm(double a, double ldpa, GDR *g)
+{
+  double fe1 = 0.0, fm1 = 0.0;
+
+  /*** scan all E1 GDR */
+  for(int i=0 ; i<MAX_GDR ; i++){
+    if(g[i].getXL() == "E1"){
+      fe1 += gdrGeneralizedLorentzian(1,7.0,&g[i],ldpa,0.0);
+    }
+  }
+
+  /*** look for the first M1, should be one */
+  int m = 0;
+  for(int i=0 ; i<MAX_GDR ; i++){
+    if(g[i].getXL() == "M1"){
+      fm1 += gdrStandardLorentzian(1,7.0,&g[i]);
+      m = i;
+      break;
+    }
+  }
+  g[m].setSigma(17.01*pow(a,-0.878)*fe1/fm1);
+}
+
+
+/**********************************************************/
+/*      Set GDR Parameters in Scope Here                  */
+/**********************************************************/
+void gdrParameterSave(GDR *gdr0)
+{
+  if(ngdr < MAX_GDR) gdr[ngdr] = *gdr0;
+  ngdr++;
+}
+
+
+/**********************************************************/
+/*      Reset GDR Parameters                              */
+/**********************************************************/
+void gdrParameterReset()
+{
+  ngdr = 0;
+  gStrengthFunction = 1.0;
+}
+
+
+/**********************************************************/
+/*      Save Gamma by Droplet Model                       */
+/*      W.D. Myers et al. Phys. Rev. C 15, 2032 (1977)    */
+/**********************************************************/
+void gdrDropletGammaSave(double a)
+{
+  gDropletGamma = 36.43 * pow(a,-1.0/3.0);
+}
+
+
+/**********************************************************/
+/*      Gamma-ray Transmission                            */
+/**********************************************************/
+double gdrGammaTransmission(GammaProfile c, GammaMultipol gm, double eg, double a, double ex)
+{
+  string xl = "  ";
+  int    l  = 0;
+
+  switch(gm){
+  case E1: xl = "E1"; l = 1; break;
+  case M1: xl = "M1"; l = 1; break;
+  case E2: xl = "E2"; l = 2; break;
+  case M2: xl = "M2"; l = 2; break;
+  case E3: xl = "E3"; l = 3; break;
+  default:                   break;
+  }
+
+  double tg = 0.0;
+  for(int i=0 ; i<ngdr ; i++){
+    if(gdr[i].getXL() == xl){
+      if(c == SL){
+        tg += gdrStandardLorentzian(l,eg,&gdr[i]);
+      }
+      else if(c == GL){
+        tg += gdrGeneralizedLorentzian(l,eg,&gdr[i],a,ex);
+      }
+      else if(c == ML){
+        tg += gdrModifiedLorentzian(l,eg,&gdr[i],a,ex);
+      }
+    }
+  }
+  /*** transmission = 2 pi x E^{2L+1} Tg */
+  tg *= PI2*pow(eg,2*l+1.0)*gStrengthFunction;
+
+  /*** if normalization factor is given, apply that factor */
+  double tgs = parmGetFactor(parmTJ,gammaray);
+  if(tgs > 0.0) tg *= tgs;
+
+  return (tg);
+}
+
+
+/**********************************************************/
+/*      Brink-Axel Standard Lorentzian Function           */
+/**********************************************************/
+double gdrStandardLorentzian(int l, double eg, GDR *gam)
+{
+  double c,f;
+
+  if((eg == 0.0) && (l > 0)) return(0.0);
+
+  c = 26.0e-08/(2*l+1.0);
+  f = c * gam->getSigma() * gam->getWidth() * pow(eg,2.0-2.0*l)
+        * gdrProfileLorentzian(eg,gam->getEnergy(),gam->getWidth());
+
+   return(f);
+}
+
+
+/**********************************************************/
+/*      Kopecky-Uhl Generalized Lorentzian Function       */
+/**********************************************************/
+double gdrGeneralizedLorentzian(int l, double eg, GDR *gam, double a, double ex)
+{
+  double c,g,f,t;
+
+  c = 26.0e-08 / (2*l+1.0);
+  t = (ex < 0.0) ? 0.0 : sqrt(ex/a);
+  g = (l==1) ? gdrTempDependGamma(eg,gam->getEnergy(),gam->getWidth(),t) 
+             : gam->getWidth();
+  f = c * gam->getSigma() * gam->getWidth() * pow(eg,2.0-2.0*l)
+      *( gdrProfileLorentzian(eg,gam->getEnergy(),g) 
+      +( (l==1) ? 0.7*gdrTempDependGamma(0.0,gam->getEnergy(),gam->getWidth(),t)
+                  /(gam->getEnergy() * gam->getEnergy() * gam->getEnergy())
+                : 0.0 )  );
+  return(f);
+}
+
+
+/**********************************************************/
+/*      Plujko Modified Lorentzian Function               */
+/**********************************************************/
+double gdrModifiedLorentzian(int l, double eg, GDR *gam, double a, double ex)
+{
+  double c,g,f,t,p;
+
+  c = 26.0e-08 / (2*l+1.0);
+  t = (ex < 0.0) ? 0.0 : sqrt(ex/a);
+  p = (t > 0.0) ? 1.0/(1.0 - exp(-eg/t)) : 1.0;
+
+  g = (l==1) ? gdrTempDependGamma2(eg,gam->getEnergy(),gam->getWidth(),ex) 
+             : gam->getWidth();
+
+  f = c * p * gam->getSigma() * gam->getWidth() * pow(eg,2.0-2.0*l)
+        * gdrProfileLorentzian(eg,gam->getEnergy(),g);
+
+  return(f);
+}
+
+
+/**********************************************************/
+/*      Renormalize E1 Strength Function for neutron      */
+/**********************************************************/
+double  gdrRenormE1StrengthFunction(int pt, int jt, int a, double d0, double sn, Nucleus *n, double **tg)
+{
+  /*** call this only once */
+  if(gStrengthFunction != 1.0) return(0.0);
+  if(sn <= 0.0) return(0.0);
+
+  /*** retrieve input <Gg>/D0 */
+  double gdinput = parmGetValue(parmGSTR);
+
+  /*** save bin parameters for re-binning the continuum */
+  double ebin = n->de;
+  double emax = n->max_energy;
+
+  n->de = 0.02;               // 20 keV bin
+  n->max_energy = sn + 0.001; // dummy 1-keV neutron incident energy
+
+  statSetupEnergyBin(n);
+  statSetupLevelDensity(n,&n->ldp);
+
+  /*** prepare gamma-ray transmission coefficients */
+  statStoreGammaTransmission(0,tg,n);
+
+  /*** for s-wave neutron, J = I+1/2, s1 and s2 are dummies */
+  double s1[1], s2[1], tsum = 0.0;
+  if(jt == 0){
+    tsum = specTransitionGamma(sumall,0,pt,1   ,tg,0.0,n,s1,s2);
+  }else{
+    tsum = specTransitionGamma(sumall,0,pt,jt-1,tg,0.0,n,s1,s2)
+         + specTransitionGamma(sumall,0,pt,jt+1,tg,0.0,n,s1,s2);
+  }
+
+  double gammag = tsum * d0 /PI2; // calculated <Gamma_g>
+
+  /*** no normalization
+       if neutron separation energy is inside the discrete level region */
+  if( (n->ncont > 0) && (tsum > 0.0) && gdinput != 0.0){
+    /*** if negative Gg is given, renormalize by systematics */
+    if(gdinput < 0.0){
+
+      /*** Gamma_g systematics for Gg = -1 case */
+      if(gdinput == -1.0){
+        gammag = gdrGammagSystematics(a);
+      }
+      /*** direct Gamma_g input */
+      else{
+        gammag = fabs(gdinput);
+      }
+    }
+    else if(gdinput > 0.0) gammag = gdinput * d0;
+
+    /*** save Tg normalization constant */
+    gStrengthFunction = PI2 * gammag / d0 / tsum;
+
+    /*** ad hoc limit to the normalization to avoid unphysical value */
+    if(gStrengthFunction > 5.0) gStrengthFunction = 5.0;
+    else if(gStrengthFunction < 0.3) gStrengthFunction = 0.3;
+  }
+
+  n->de = ebin;
+  n->max_energy =emax;
+  statSetupEnergyBin(n);
+  statSetupLevelDensity(n,&n->ldp);
+
+  return(gammag);
+}
+
+
+/**********************************************************/
+/*      Temperature dependent Gamma, by Kadmenskij        */
+/**********************************************************/
+double gdrTempDependGamma(double eg, double er, double w, double t)
+{
+  if(er == 0.0) return(0.0);
+  return( w*(eg*eg + 4.0*PI*PI*t*t)/(er*er) );
+}
+
+
+/**********************************************************/
+/*      Temperature dependent Gamma, by Plujko            */
+/**********************************************************/
+double gdrTempDependGamma2(double eg, double er, double w, double ex)
+{
+  if(er == 0.0) return(0.0);
+
+  const double c = 5.42e-04;
+
+  double gammac =  c * er * (eg + ex);
+
+  double k0 = 0.3;
+  double kr = (w - c*er*er)/gDropletGamma;
+  double ks = (eg >= 2.0*er) ? k0 : kr + (k0 - kr)*fabs((eg - er)/er);
+
+  double gammaf = ks * gDropletGamma;
+
+  return(gammac + gammaf);
+}
+
+
+/**********************************************************/
+/*      Lorentzian Profile                                */
+/**********************************************************/
+double gdrProfileLorentzian(double eg, double er, double w)
+{
+  if((er == eg) && (eg*w == 0.0)) return(0.0);
+  return (eg*w /( (er*er-eg*eg)*(er*er-eg*eg) + eg*eg*w*w )); 
+}
+
+
+/**********************************************************/
+/*      Gamma_gamma Approximation                         */
+/**********************************************************/
+double gdrGammagSystematics(int a)
+{
+  double gg = 2.9666e-03 * pow((double)a,-2.0801);
+  return(gg);
+}
+

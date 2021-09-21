@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title> Optical and Hauser-Feshbach Statistical Model Code, CoH: option </title>
+<!-- Generated 2016/ 7/28, Last modified 2016/10/27 -->
+<meta http-equiv="content-type" content="text/html;charset=us-ascii">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body>
+
+<a href="tweak.html">     [BACK] </a>
+<a href="index.html">      [UP]  </a>
+<a href="structure.html"> [NEXT] </a>
+<hr>
+
+<h1>Options</h1>
+
+<h2><a name="option">Activate Optional Features</a></h2>
+
+<p> Some optional features in CoH can be activated by the <tt>option</tt> lines in
+the <tt>DATA</tt> section, followed by an option keyword. There is no parameters.
+The option keyword just turns on the special functionality that is not so common
+in a standard calculations. </p>
+
+<p>This option capability could be used for an ad-hoc change to the
+code. It does not guarantee the provided options work in a same way
+for a newer versions of CoH.</p>
+
+
+<h2><a name="internalconversion">Internal Conversion</a></h2>
+
+<pre>
+DATA     :
+option   : internalconversion
+ENDDATA  :
+</pre>
+
+<p>This option applies the internal conversion (IC) coefficients to
+the produced gamma-rays when printing. The IC coefficients are taken
+from RIPL. This option is used to compare experimental data of photon
+production, if they are not corrected by IC. </p>
+
+
+<h2><a name="ewtransformation">Engelbrecht-Weidenmueller transformation</a></h2>
+
+<pre>
+option   : ewtransformation
+</pre>
+
+<p>Perform Engelbrecht-Weidenmueller transformation for the coupled-channels
+S-matrix to calculate compound inelastic scattering cross section. This option
+is important when the target deformation is large and the incident energy is low.
+The effect of this option will be very small above 1 MeV or so.</p>
+
+
+<h2><a name="readdensity">Level density from external file</a></h2>
+
+<pre>
+option   : readdensity
+</pre>
+
+<p>Read tabulated pre-calculated level densities from an external
+file. The data file should be in the current working directory with
+the name of zNNN.tab, where NNN is the z-number such as 092 for
+uranium. When the fission channel is open, the fission level densities
+for the first and second barriers will be red too.  These files are
+zNNNmax1.tab and zNNNmax2.tab. For the data format, see RIPL technical
+report.</p>
+
+
+<h2><a name="groundstateomp">Use ground state OMP for excited states</a></h2>
+
+<pre>
+option   : groundstateomp
+</pre>
+
+<p>In a coupled-channels calculation, the optical potentials for the excited
+states are often different from the one for the ground state when the potential
+parameters are energy-dependent. This option forces to use the same optical
+potential given for the ground state.
+
+
+<hr>
+<a href="tweak.html">     [BACK] </a>
+<a href="index.html">      [UP]  </a>
+<a href="structure.html"> [NEXT] </a>
+</body>
+</html>
+

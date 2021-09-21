@@ -1,0 +1,55 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title> Optical and Hauser-Feshbach Statistical Model Code, CoH: install </title>
+<!-- Generated 1997/ 8/27, Last modified 2010/ 9/20 -->
+<meta http-equiv="content-type" content="text/html;charset=us-ascii">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body>
+
+<a href="introduction.html">  [BACK] </a>
+<a href="index.html">   [UP]  </a>
+<a href="usage.html">  [NEXT] </a>
+<hr>
+
+<h1> Install </h1>
+
+<p>Distribution of CoH is managed by a standard GNU Autoconf package.
+To compile all the sources you need a standard C++ compiler. GCC (GNU
+C++, g++ is recommended). The distribution package has been tested
+only on Linux (Fedora) and Mac (OSX), but this should work on the
+other platforms.</p>
+
+<p>To install the package, extract all the source files in an archive by </p>
+
+<pre> % tar zxvf coh-3.X.Y-Z.tar.gz</pre>
+
+<p>where <tt>X,Y</tt> is the version number, and <tt>Z</tt> is the
+project name, which is <b>Ariel</b> now. </p>
+
+<p>Enter the directory <tt>coh-3.X.Y-Z</tt>, and type </p>
+
+<pre> % ./configure</pre>
+
+<p>and</p>
+
+<pre> % make ; make install</pre>
+
+<p>As a default, data files needed will be installed
+under <tt>/usr/local/share/coh</tt> (or something similar), and two
+executables (coh and eclipse) go to <tt>/usr/local/bin</tt>, so that
+the last step requires administrative privileges.  If you want to
+change the installation location, use <tt>--prefix </tt> option,
+like</p>
+
+<pre> % ./configure --prefix=/home/hoge/coh </pre>
+
+<p>where <tt>/home/home/coh</tt> is the top directory for installation. </p>
+
+<hr>
+<a href="introduction.html">  [BACK] </a>
+<a href="index.html">   [UP]  </a>
+<a href="usage.html">  [NEXT] </a>
+</body>
+</html>
