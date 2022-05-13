@@ -314,7 +314,8 @@ int cohEntranceChannel()
 /**********************************************************/
 void cohCheckRange(ZAnumber *t, double e)
 {
-  const double       emax = 150.0;
+/***  const double       emax = 150.0; */
+  const double       emax = 200.0;
   const unsigned int zmin =     5;
   const unsigned int zmax =   118;
   const unsigned int amin =    11;
