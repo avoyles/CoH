@@ -114,7 +114,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
 
     }else if(head == "omp_n    :"){
       readExtractData(0);
-      pdt[neutron ].omp = find_omp(data);
+      pdt[neutron ].omp = find_omp(::data);
 
     }else if(head == "omp_p    :"){
       if(MAX_CHANNEL <= 2){
@@ -122,7 +122,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[proton  ].omp = find_omp(data);
+      pdt[proton  ].omp = find_omp(::data);
 
     }else if(head == "omp_a    :"){
       if(MAX_CHANNEL <= 3){
@@ -130,7 +130,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[alpha   ].omp = find_omp(data);
+      pdt[alpha   ].omp = find_omp(::data);
 
     }else if(head == "omp_d    :"){
       if(MAX_CHANNEL <= 4 ){
@@ -138,7 +138,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[deuteron].omp = find_omp(data);
+      pdt[deuteron].omp = find_omp(::data);
 
     }else if(head == "omp_t    :"){
       if(MAX_CHANNEL <= 5){
@@ -146,7 +146,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[triton  ].omp = find_omp(data);
+      pdt[triton  ].omp = find_omp(::data);
 
     }else if(head == "omp_h    :"){
       if(MAX_CHANNEL <= 6){
@@ -154,7 +154,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[helion  ].omp = find_omp(data);
+      pdt[helion  ].omp = find_omp(::data);
 
     }else if(head == "level    :"){
       if(klev < MAX_DIRECT){
@@ -338,16 +338,16 @@ int readStatModel(char *s, GDR *gdr, Fission *fbr)
     }else if(head == "gdr      :"){
       if(ngdr < MAX_GDR){
         readExtractData(0);
-        if(tolower(data[0]) != 'e' && tolower(data[0]) != 'm'){
-          message << "gamma-ray emission type " << data[0] << " not defined";
+        if(tolower(::data[0]) != 'e' && tolower(::data[0]) != 'm'){
+          message << "gamma-ray emission type " << ::data[0] << " not defined";
           cohTerminateCode("readStatModel");
         }
-        if(data[1] != '1' && data[1] != '2' && data[1] != '3'){
-          message << "gamma-ray multipolarity " << data[1] << " should be 1, 2, or 3";
+        if(::data[1] != '1' && ::data[1] != '2' && ::data[1] != '3'){
+          message << "gamma-ray multipolarity " << ::data[1] << " should be 1, 2, or 3";
           cohTerminateCode("readStatModel");
         }
 
-        gdr[ngdr].setXL( data );
+        gdr[ngdr].setXL( ::data );
         gdr[ngdr].setEnergy ( atof(readExtractData(1)) );
         gdr[ngdr].setWidth  ( atof(readExtractData(2)) );
         gdr[ngdr].setSigma  ( atof(readExtractData(3)) );
@@ -568,7 +568,7 @@ int readFns(char *s, FNSpec *fns)
 
     }else if(head == "omp      :"){
       readExtractData(0);
-      fns->omindex = find_omp(data);
+      fns->omindex = find_omp(::data);
 
     }else{
       message << "unknown key-word [" << head << "] in FNS";
@@ -740,7 +740,7 @@ int readFgetOneline(char *s)
 /**********************************************************/
 char * readExtractData(int n)
 {
-  data[0] = '\0';
+  ::data[0] = '\0';
 
   if( strlen(line.c_str())>W_HEAD ){
     string work = line;
@@ -756,10 +756,10 @@ char * readExtractData(int n)
         if(tok == NULL) break;
       }
     }
-    if(tok != NULL) strncpy(&data[0],tok,sizeof(data)-1);
+    if(tok != NULL) strncpy(&::data[0],tok,sizeof(::data)-1);
   }
 
-  return(&data[0]);
+  return(&::data[0]);
 }
 
 
@@ -785,7 +785,7 @@ int readElementToZ(char *d)
 Particle readParticleIdentify(int n)
 {
   readExtractData(n);
-  char i = tolower(data[0]);
+  char i = tolower(::data[0]);
 
   Particle p = unknown;
   switch(i){

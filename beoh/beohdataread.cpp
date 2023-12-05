@@ -96,8 +96,8 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
     }else if(head == "initspin :"){
       bdt->initspin = atof(readExtractData(0));
       readExtractData(1);
-      if(data[0] == '+') bdt->initparity = 1;
-      else if(data[0] == '-') bdt->initparity = -1;
+      if(::data[0] == '+') bdt->initparity = 1;
+      else if(::data[0] == '-') bdt->initparity = -1;
 
     }else if(head == "spinfact :"){
       bdt->spinfactor = atof(readExtractData(0));
@@ -107,7 +107,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
 
     }else if(head == "omp_n    :"){
       readExtractData(0);
-      pdt[neutron ].omp = find_omp(data);
+      pdt[neutron ].omp = find_omp(::data);
 
     }else if(head == "omp_p    :"){
       if(MAX_CHANNEL <= 2){
@@ -115,7 +115,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[proton  ].omp = find_omp(data);
+      pdt[proton  ].omp = find_omp(::data);
 
     }else if(head == "omp_a    :"){
       if(MAX_CHANNEL <= 3){
@@ -123,7 +123,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[alpha   ].omp = find_omp(data);
+      pdt[alpha   ].omp = find_omp(::data);
 
     }else if(head == "omp_d    :"){
       if(MAX_CHANNEL <= 4 ){
@@ -131,7 +131,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[deuteron].omp = find_omp(data);
+      pdt[deuteron].omp = find_omp(::data);
 
     }else if(head == "omp_t    :"){
       if(MAX_CHANNEL <= 5){
@@ -139,7 +139,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[triton  ].omp = find_omp(data);
+      pdt[triton  ].omp = find_omp(::data);
 
     }else if(head == "omp_h    :"){
       if(MAX_CHANNEL <= 6){
@@ -147,7 +147,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[helion  ].omp = find_omp(data);
+      pdt[helion  ].omp = find_omp(::data);
 
     }else if(head == "deform   :"){
       sys->beta2 = atof(readExtractData(0));
@@ -250,16 +250,16 @@ int readStatModel(char *s, GDR *gdr, Fission *fbr)
     }else if(head == "gdr      :"){
       if(j < MAX_GDR){
         readExtractData(0);
-        if(tolower(data[0]) != 'e' && tolower(data[0]) != 'm'){
-          message << "gamma-ray emission type " << data[0] << " not defined";
+        if(tolower(::data[0]) != 'e' && tolower(::data[0]) != 'm'){
+          message << "gamma-ray emission type " << ::data[0] << " not defined";
           cohTerminateCode("readStatModel");
         }
-        if(data[1] != '1' && data[1] != '2' && data[1] != '3'){
-          message << "gamma-ray multipolarity " << data[1] << " should be 1, 2, or 3";
+        if(::data[1] != '1' && ::data[1] != '2' && ::data[1] != '3'){
+          message << "gamma-ray multipolarity " << ::data[1] << " should be 1, 2, or 3";
           cohTerminateCode("readStatModel");
         }
 
-        gdr[j].setXL( data );
+        gdr[j].setXL( ::data );
         gdr[j].setEnergy ( atof(readExtractData(1)) );
         gdr[j].setWidth  ( atof(readExtractData(2)) );
         gdr[j].setSigma  ( atof(readExtractData(3)) );
@@ -506,7 +506,7 @@ int readFgetOneline(char *s)
 /**********************************************************/
 char * readExtractData(int n)
 {
-  data[0] = '\0';
+  ::data[0] = '\0';
 
   if( strlen(line.c_str())>W_HEAD ){
     string work = line;
@@ -522,10 +522,10 @@ char * readExtractData(int n)
         if(tok==NULL) break;
       }
     }
-    if(tok!=NULL) strncpy(&data[0],tok,sizeof(data)-1);
+    if(tok!=NULL) strncpy(&::data[0],tok,sizeof(::data)-1);
   }
 
-  return(&data[0]);
+  return(&::data[0]);
 }
 
 
@@ -551,7 +551,7 @@ int readElementToZ(char *d)
 Particle readParticleIdentify(int n)
 {
   readExtractData(n);
-  char i = tolower(data[0]);
+  char i = tolower(::data[0]);
 
   Particle p = unknown;
   switch(i){
