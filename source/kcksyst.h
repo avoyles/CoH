@@ -1,9 +1,5 @@
-/*
-   kcksys.h : 
-        define level density parameter file location
-        prototype of function to read level density parameters
- */
-
+// define level density parameter file location
+// function to read level density parameters
 
 #ifndef __DIR_H__
 #define __DIR_H_

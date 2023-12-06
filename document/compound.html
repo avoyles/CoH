@@ -2,7 +2,7 @@
 <html>
 <head>
 <title> Optical and Hauser-Feshbach Statistical Model Code, CoH: input (compound)</title>
-<!-- Generated 2009/ 9/24, Last modified 2016/ 9/ 1 -->
+<!-- Generated 2009/ 9/24, Last modified 2020/ 5/10 -->
 <meta http-equiv="content-type" content="text/html;charset=us-ascii">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
@@ -113,7 +113,7 @@ recommended that you should not use this model unless needed.</p>
 <pre>
 FNS      :
 fragment :  Sr   96     Xe  140
-energies :  186.98  171.8   6.71  4.998
+energies :  186.98  171.8  -0.2  6.71  4.998
 density  :  8.7273      12.7273    21.4545
 density  :  8.7273      12.5       21.2
 nuratio  : 1
@@ -133,9 +133,9 @@ heavy A order. If not given symmetric fission is assumed.</p>
 
 <p>The keyword <tt>energies</tt> defines fission-related energies, and
 four values are red - the total energy release, total kinetic energy
-(TKE), average gamma-ray energy, and average neutron separation
-energy. If each of them was zero, CoH calculates them internally
-using approximated formulae.</p>
+(TKE), energy-dependent term in TKE, average gamma-ray energy, and
+average neutron separation energy. If each of them was zero, CoH
+calculates them internally using approximated formulae.</p>
 
 <p>The fragment effective level densities are given by
 the <tt>density</tt> line. Three arguments are the level densities

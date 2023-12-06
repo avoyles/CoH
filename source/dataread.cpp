@@ -35,7 +35,7 @@ static inline void readParSet3       (const parameterType);
 static inline void readParSet4       (const parameterType);
 
 static string head;
-static char   data[256];
+static char   inputdata[256];
 
 /**********************************************************/
 /*      Read Headline                                     */
@@ -64,31 +64,34 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
   int klev = 0;
   int kein = 0;
   int kmkt = 0;
+  unsigned char inputcheck = 0x00; // 1: target, 2: energy, 4: incident
 
   for(int i=0 ; i<MAX_LAMBDA ; i++) dir->defdynamic[i] = dir->defstatic[i] = 0.0;
   for(int i=0 ; i<MAX_DIRECT ; i++) dir->lev[i].spin = dir->lev[i].energy = 0.0;
 
   while(1){
-    if( readFgetOneline(s)<0 ) break;
+    if( readFgetOneline(s) < 0 ) break;
 
     if(head == "ENDDATA  :"){
-      return(klev);
+      break;
 
     }else if(head == "target   :"){
       int z = readElementToZ(readExtractData(0));
       int a = atoi(          readExtractData(1));
       sys->target.setZA(z,a);
+      inputcheck = inputcheck | 0x01;
 
     }else if(head == "incident :"){
       Particle p = readParticleIdentify(0);
-      if(     p== gammaray) sys->incident.za.setZA(0,0);
-      else if(p== neutron ) sys->incident.za.setZA(0,1);
-      else if(p== proton  ) sys->incident.za.setZA(1,1);
-      else if(p== alpha   ) sys->incident.za.setZA(2,4);
-      else if(p== deuteron) sys->incident.za.setZA(1,2);
-      else if(p== triton  ) sys->incident.za.setZA(1,3);
-      else if(p== helion  ) sys->incident.za.setZA(2,3);
-      else                  sys->incident.za.setZA(0,1); // neutron assumed;
+      if(     p == gammaray) sys->incident.za.setZA(0,0);
+      else if(p == neutron ) sys->incident.za.setZA(0,1);
+      else if(p == proton  ) sys->incident.za.setZA(1,1);
+      else if(p == alpha   ) sys->incident.za.setZA(2,4);
+      else if(p == deuteron) sys->incident.za.setZA(1,2);
+      else if(p == triton  ) sys->incident.za.setZA(1,3);
+      else if(p == helion  ) sys->incident.za.setZA(2,3);
+      else                   sys->incident.za.setZA(0,1); // neutron assumed;
+      inputcheck = inputcheck | 0x04;
 
     }else if(head == "energy   :"){
       ein[kein++] = atof(readExtractData(0));
@@ -96,6 +99,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         message << "too many incident energies " << kein;
         cohTerminateCode("readSystem");
       }
+      inputcheck = inputcheck | 0x02;
 
     }else if(head == "macs     :" || head == "t9       :"){
       double x =  atof(readExtractData(0));
@@ -105,6 +109,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         message << "too many Maxwellian temperatures " << kmkt;
         cohTerminateCode("readSystem");
       }
+      inputcheck = inputcheck | 0x02;
 
     }else if(head == "excite   :"){
       sys->excitation = atof(readExtractData(0));
@@ -114,7 +119,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
 
     }else if(head == "omp_n    :"){
       readExtractData(0);
-      pdt[neutron ].omp = find_omp(::data);
+      pdt[neutron ].omp = find_omp(inputdata);
 
     }else if(head == "omp_p    :"){
       if(MAX_CHANNEL <= 2){
@@ -122,7 +127,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[proton  ].omp = find_omp(::data);
+      pdt[proton  ].omp = find_omp(inputdata);
 
     }else if(head == "omp_a    :"){
       if(MAX_CHANNEL <= 3){
@@ -130,7 +135,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[alpha   ].omp = find_omp(::data);
+      pdt[alpha   ].omp = find_omp(inputdata);
 
     }else if(head == "omp_d    :"){
       if(MAX_CHANNEL <= 4 ){
@@ -138,7 +143,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[deuteron].omp = find_omp(::data);
+      pdt[deuteron].omp = find_omp(inputdata);
 
     }else if(head == "omp_t    :"){
       if(MAX_CHANNEL <= 5){
@@ -146,7 +151,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[triton  ].omp = find_omp(::data);
+      pdt[triton  ].omp = find_omp(inputdata);
 
     }else if(head == "omp_h    :"){
       if(MAX_CHANNEL <= 6){
@@ -154,7 +159,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[helion  ].omp = find_omp(::data);
+      pdt[helion  ].omp = find_omp(inputdata);
 
     }else if(head == "level    :"){
       if(klev < MAX_DIRECT){
@@ -202,6 +207,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
 
     }else if(head == "egrid    :"){
       readParSet1(parmESET);
+      inputcheck = inputcheck | 0x02;
 
     }else if(head == "massfile :"){
       massReadFile(readExtractData(0));
@@ -217,11 +223,20 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
       else if(item == "readdensity"){
         opt.readdensity = true;
       }
+      else if(item == "readphotoabsorption"){
+        opt.readphotoabsorption = true;
+      }
       else if(item == "groundstateomp"){
         opt.groundstateomp = true;
       }
       else if(item == "chargediscrete"){
         opt.chargediscrete = true;
+      }
+      else if(item == "finegammaspectrum"){
+        opt.finegammaspectrum = true;
+      }
+      else if(item == "continuumangdist"){
+        opt.continuumangdist = true;
       }
       else{
         message << "no such option [" << item << "] in DATA";
@@ -230,6 +245,24 @@ int readSystem(char *s, System *sys, Pdata *pdt, Direct *dir, double *ein, doubl
 
     }else{
       message << "unknown key-word [" << head << "] in DATA";
+      cohTerminateCode("readSystem");
+    }
+  }
+
+  /*** minimun input check, at least target is required */
+  if(!(inputcheck & 0x01)){
+    message << "target nucleus not given";
+    cohTerminateCode("readSystem");
+  }
+
+  /*** exclude target only case, which is for mean-field calculation */
+  if(inputcheck != 0x01){
+    if(!(inputcheck & 0x02)){
+      message << "calculation energy not given";
+      cohTerminateCode("readSystem");
+    }
+    if(!(inputcheck & 0x04)){
+      message << "incident particle not given";
       cohTerminateCode("readSystem");
     }
   }
@@ -338,19 +371,31 @@ int readStatModel(char *s, GDR *gdr, Fission *fbr)
     }else if(head == "gdr      :"){
       if(ngdr < MAX_GDR){
         readExtractData(0);
-        if(tolower(::data[0]) != 'e' && tolower(::data[0]) != 'm'){
-          message << "gamma-ray emission type " << ::data[0] << " not defined";
+        if(tolower(inputdata[0]) != 'e' && tolower(inputdata[0]) != 'm'){
+          message << "gamma-ray emission type " << inputdata[0] << " not defined";
           cohTerminateCode("readStatModel");
         }
-        if(::data[1] != '1' && ::data[1] != '2' && ::data[1] != '3'){
-          message << "gamma-ray multipolarity " << ::data[1] << " should be 1, 2, or 3";
+        if(inputdata[1] != '1' && inputdata[1] != '2' && inputdata[1] != '3'){
+          message << "gamma-ray multipolarity " << inputdata[1] << " should be 1, 2, or 3";
           cohTerminateCode("readStatModel");
         }
 
-        gdr[ngdr].setXL( ::data );
+        gdr[ngdr].setXL( inputdata );
         gdr[ngdr].setEnergy ( atof(readExtractData(1)) );
         gdr[ngdr].setWidth  ( atof(readExtractData(2)) );
         gdr[ngdr].setSigma  ( atof(readExtractData(3)) );
+        string p = (string)readExtractData(4);
+        if(p == "SL" || p == "") gdr[ngdr].setProfile(SL);
+        else if(p == "GL")       gdr[ngdr].setProfile(GL);
+        else if(p == "ML")       gdr[ngdr].setProfile(ML);
+        else{
+          message << "gamma-ray profile " << p << " not defined";
+          cohTerminateCode("readStatModel");
+        }
+
+        /*** for backward compatibility */
+        if((ngdr <= 1) && (gdr[ngdr].getXL() == "E1") && (p == "")) gdr[ngdr].setProfile(GL);
+
         ngdr++;
       }
 
@@ -408,7 +453,18 @@ int readStatModel(char *s, GDR *gdr, Fission *fbr)
           cohTerminateCode("readStatModel");
         }
       }
-      
+
+    }else if(head == "fenhance :"){
+      z = readElementToZ(readExtractData(0));
+      a = atoi(          readExtractData(1));
+
+      if( nfis < MAX_FISS_CHANCE ){
+        fbr[nfis].za.setZA(z,a);
+        fbr[nfis].fisenhance.energy = atof(readExtractData(2));
+        fbr[nfis].fisenhance.width  = atof(readExtractData(3));
+        fbr[nfis].fisenhance.peak   = atof(readExtractData(4));
+      }
+
     }else if(head == "levelcut :"){
       readParSet3(parmLCUT);
 
@@ -473,6 +529,9 @@ int readExciton(char *s)
 
     }else if(head == "tweakKO  :"){
       readParSet1(parmKO);
+
+    }else if(head == "tweakCOLL:"){
+      readParSet1(parmCOLL);
 
     }else{
       message << "unknown key-word [" << head << "] in PREEQ";
@@ -568,7 +627,7 @@ int readFns(char *s, FNSpec *fns)
 
     }else if(head == "omp      :"){
       readExtractData(0);
-      fns->omindex = find_omp(::data);
+      fns->omindex = find_omp(inputdata);
 
     }else{
       message << "unknown key-word [" << head << "] in FNS";
@@ -740,7 +799,7 @@ int readFgetOneline(char *s)
 /**********************************************************/
 char * readExtractData(int n)
 {
-  ::data[0] = '\0';
+  inputdata[0] = '\0';
 
   if( strlen(line.c_str())>W_HEAD ){
     string work = line;
@@ -756,10 +815,10 @@ char * readExtractData(int n)
         if(tok == NULL) break;
       }
     }
-    if(tok != NULL) strncpy(&::data[0],tok,sizeof(::data)-1);
+    if(tok != NULL) strncpy(&inputdata[0],tok,sizeof(inputdata)-1);
   }
 
-  return(&::data[0]);
+  return(&inputdata[0]);
 }
 
 
@@ -785,7 +844,7 @@ int readElementToZ(char *d)
 Particle readParticleIdentify(int n)
 {
   readExtractData(n);
-  char i = tolower(::data[0]);
+  char i = tolower(inputdata[0]);
 
   Particle p = unknown;
   switch(i){

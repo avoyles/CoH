@@ -9,10 +9,13 @@
 
 using namespace std;
 
+#include "physicalconstant.h"
 #include "structur.h"
 #include "statmodel.h"
 #include "outext.h"
 #include "nucleus.h"
+
+static const bool gammaray_with_conversion = false;
 
 static inline void extHead (const char *section){
   cout << "#" << section << endl;
@@ -223,42 +226,59 @@ void extFissionDensity(const int nc)
 /**********************************************************/
 /*      Discrete Level and Gamma-Ray Branching Ratio      */
 /**********************************************************/
-void extGammaBranch(const int n)
+void extGammaBranch()
 {
   int    fs[MAX_GAMMA_BRANCH], f;
   double br[MAX_GAMMA_BRANCH], b;
+  double gr[MAX_GAMMA_BRANCH], g;
 
-  extHead("gammaray");
+  if(gammaray_with_conversion) extHead("gammaraywithconversion");
+  else extHead("gammaray");
 
   cout.setf(ios::scientific, ios::floatfield);
-  cout << setprecision(5);
+  cout << setprecision(6);
 
-  for(int c=0 ; c<n ; c++){
-    if(ncl[c].ndisc == 0) continue;
 
-    cout << setw(5) << c << setw(4) << ncl[c].ndisc << endl;
-    for(int i=0 ; i<ncl[c].ndisc ; i++){
-      cout << setw(9) << i << setw(4) << ncl[c].lev[i].ngamma
-           << setw(13) << ncl[c].lev[i].energy;
+  for(int c=0 ; c<MAX_CHANNEL ; c++){
+
+    if(!ncl[0].cdt[c].status) continue;
+    int p = ncl[0].cdt[c].next;
+
+    if(ncl[p].ndisc == 0) continue;
+
+    /*** ID for CN and number of discrete levels included */
+    cout << setw(5) << c << setw(4) << ncl[p].ndisc;
+    cout << setw(3) << ncl[p].za.getZ() << setw(4) << ncl[p].za.getA() << endl;
+
+    for(int i=0 ; i<ncl[p].ndisc ; i++){
+      cout << setw(9) << i << setw(4) << ncl[p].lev[i].ngamma
+           << setw(13) << ncl[p].lev[i].energy;
 
       /*** sort the gamma branches by decreasing order */
-      for(int m=0 ; m<ncl[c].lev[i].ngamma ; m++){
-        fs[m] = ncl[c].lev[i].fstate[m];
-        br[m] = ncl[c].lev[i].branch[m];
+      for(int m=0 ; m<ncl[p].lev[i].ngamma ; m++){
+        fs[m] = ncl[p].lev[i].fstate[m];
+        br[m] = ncl[p].lev[i].branch[m];
+        gr[m] = ncl[p].lev[i].gratio[m];
       }
 
-      for(int j=0 ; j<ncl[c].lev[i].ngamma ; j++){
+      for(int j=0 ; j<ncl[p].lev[i].ngamma ; j++){
         int k = j;
-        for(int m=j ; m<ncl[c].lev[i].ngamma ; m++){
+        for(int m=j ; m<ncl[p].lev[i].ngamma ; m++){
           if(fs[m] > fs[k]) k=m;
         }
-        b = br[j];  br[j] = br[k];  br[k] = b;
         f = fs[j];  fs[j] = fs[k];  fs[k] = f;
+        b = br[j];  br[j] = br[k];  br[k] = b;
+        g = gr[j];  gr[j] = gr[k];  gr[k] = g;
       }
 
-      for(int m=0 ; m<ncl[c].lev[i].ngamma ; m++){
-        cout << setw(4) << fs[m]
-             << setw(13)<< br[m];
+      /*** print final state and branching ratio */
+      for(int m=0 ; m<ncl[p].lev[i].ngamma ; m++){
+        if(gammaray_with_conversion){
+          cout << setw(4) << fs[m] << setw(13)<< br[m] << setw(13)<< gr[m];
+        }
+        else{
+          cout << setw(4) << fs[m] << setw(13)<< br[m];
+        }
       }
       cout << endl;
     }
@@ -287,7 +307,7 @@ void extGammaLine(const double elab, double *spc, Nucleus *n, const double gw)
     double x1 = (k+0.5)*n->de;
 
     /*** subtract discrete gamma lines */
-    for(int i=0 ; i<gml.n ; i++){
+    for(int i=0 ; i<gml.getN() ; i++){
       double eg = abs(gml.line[i].energy);
       if((x0 <= eg) && (eg < x1)) gcnt[k] -= gml.line[i].production/n->de;
     }
@@ -299,9 +319,9 @@ void extGammaLine(const double elab, double *spc, Nucleus *n, const double gw)
 
   /*** not broadening */
   if(gw == 0.0){
-    cout << "# discrete  " << setw(11) << gml.n << endl;
+    cout << "# discrete  " << setw(11) << gml.getN() << endl;
     cout << "#       Z   A Energy       Production" << endl;
-    for(int i=0 ; i<gml.n ; i++){
+    for(int i=0 ; i<gml.getN() ; i++){
       cout << setw(5) << i+1;
       cout << setw(4) << gml.line[i].za.getZ();
       cout << setw(4) << gml.line[i].za.getA();
@@ -329,7 +349,7 @@ void extGammaLine(const double elab, double *spc, Nucleus *n, const double gw)
     specGaussianBroadening(gmax, n->de, gw, gcnt);
 
     /*** add discrete level contributions */
-    for(int i=0 ; i<gml.n ; i++){
+    for(int i=0 ; i<gml.getN() ; i++){
       specGaussianBroadening(gmax, n->de, gw, gcnt, abs(gml.line[i].energy), gml.line[i].production);
     }
 
@@ -344,7 +364,6 @@ void extGammaLine(const double elab, double *spc, Nucleus *n, const double gw)
       cout << setprecision(6) << setw(13) << spc[k] << setw(13) << gcnt[k] << endl;
     }
   }
-
 
   delete [] gcnt;
 }
@@ -365,3 +384,37 @@ void extDecayWidth(const int j, double *w)
   for(int i=0 ; i<MAX_CHANNEL+1 ; i++) cout << setw(13) << w[i];
   cout << endl;
 }
+
+
+/**********************************************************/
+/*      Gamma Strength Function                           */
+/**********************************************************/
+void extGammaStrengthFunction(const int n, const double de, double **tg)
+{
+  extHead("gstrengthfunc");
+
+  cout << "#   Eg[MeV]       E1[mb]       M1[mb]       E2[mb]       M2[mb]       E3[mb]" << endl;
+
+  double c0 = HBARSQ * VLIGHTSQ * PI * PI * NORM_FACT / PI2; // convert transmission to photo-absorption
+
+  for(int k=1 ; k<n ; k++){
+    double eg = k * de;
+    double e2 = eg * eg;
+    double c1 = c0 * 3.0 / e2;
+    double c2 = c0 * 5.0 / e2;
+    double c3 = c0 * 7.0 / e2;
+
+    cout.setf(ios::fixed, ios::floatfield);
+    cout << setprecision(4) << setw(11) << eg;
+
+    cout.setf(ios::scientific, ios::floatfield);
+    cout << setprecision(5);
+    cout << setw(13) <<  tg[k][E1] * c1;
+    cout << setw(13) <<  tg[k][M1] * c1;
+    cout << setw(13) <<  tg[k][E2] * c2;
+    cout << setw(13) <<  tg[k][M2] * c2;
+    cout << setw(13) <<  tg[k][E3] * c3;
+    cout << endl;
+  }
+}
+

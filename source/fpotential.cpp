@@ -164,6 +164,9 @@ void    fpotInternalFunction(const int nm, double ex, double mu, double dx, doub
   p0 = complex<double>(cos(-dx*wave),-sin(-dx*wave));
   p1 = complex<double>(cos(0.0),sin(0.0));
 
+  q0 = complex<double>(-ex*c,0.0);
+  q1 = complex<double>(-ex*c,0.0);
+
   for(int i=0 ; i<nm ; i++){
     q2 = (vpot[i] - ex)*c;
     p2 = ((2.0 + 10.0*h2*q1)*p1 - (1.0 - h2*q0)*p0) / (1.0 - h2*q2);

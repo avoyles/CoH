@@ -1,8 +1,4 @@
-/*
-   ewtrans.h : 
-        transfer data between coupled-channels and Hauser-Feshbach
- */
-
+// transfer data between coupled-channels and Hauser-Feshbach
 
 #ifdef CC_TOPLEVEL
 Collective       gCol;

@@ -1,8 +1,4 @@
-// $Id: elements.h 80 2020-05-13 mumpower - updated with larger element pool $
-/*
-   elelemnts.h : 
-        Z - element name conversion table
- */
+//  Z - element name conversion table
 
 const int N_ELEMENTS = 141;
 

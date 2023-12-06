@@ -1,7 +1,4 @@
-/*
-   polysq.h :
-        definition of functions for the least-squares method
-*/
+// functions for the least-squares method
 
 /**************************************/
 /*     POLYSQ.CPP                     */

@@ -130,8 +130,10 @@ int riplReadDiscreteLevels(ZAnumber *za, Level *lev, MaxLevelCtl ml)
         lev[i].parity   = p;
         lev[i].flag     = f;
 
-        if(ng == 0) ng = riplFixTransition(nf,pe,ic,i,lev);
-        ng = riplNormalizeBranch(ng,pe,ic);
+        if(i >= 1){
+          if(ng == 0) ng = riplFixTransition(nf,pe,ic,i,lev);
+          ng = riplNormalizeBranch(ng,pe,ic);
+        }
 
         lev[i].ngamma   = ng;
 

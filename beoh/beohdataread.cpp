@@ -18,6 +18,7 @@ using namespace std;
 #include "terminate.h"
 #include "global.h"
 #include "masstable.h"
+#include "dir.h"
 
 static const unsigned int W_HEAD = 10;  // width of keyword
 
@@ -33,7 +34,7 @@ static inline void readParSet3       (const parameterType);
 static inline void readParSet4       (const parameterType);
 
 static string head;
-static char   data[256];
+static char   inputdata[256];
 
 /**********************************************************/
 /*      Read Headline                                     */
@@ -58,13 +59,13 @@ int readHead(char *s)
 /**********************************************************/
 /*      Read System Parameter                             */
 /**********************************************************/
-int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
+int readSystem(char *s, System *sys, Pdata *pdt, FFragData *fdt, BData *bdt)
 {
   while(1){
     if( readFgetOneline(s) < 0 ) break;
 
     if(head == "ENDDATA  :"){
-      return(0);
+      break;
 
     }else if(head == "precursor:" || head == "compound :" || head == "target   :"){
       int z = readElementToZ(readExtractData(0));
@@ -90,14 +91,18 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
     }else if(head == "qvalue   :" || head == "energy   :"){
       bdt->energy  = atof(readExtractData(0));
 
+    }else if(head == "incident :"){
+      sys->incident.pid = readParticleIdentify(0);
+
     }else if(head == "isomer   :"){
       sys->target_level = atoi(readExtractData(0));
 
     }else if(head == "initspin :"){
       bdt->initspin = atof(readExtractData(0));
       readExtractData(1);
-      if(::data[0] == '+') bdt->initparity = 1;
-      else if(::data[0] == '-') bdt->initparity = -1;
+      if(inputdata[0] == '+') bdt->initparity = 1;
+      else if(inputdata[0] == '-') bdt->initparity = -1;
+      else bdt->initparity = -2;
 
     }else if(head == "spinfact :"){
       bdt->spinfactor = atof(readExtractData(0));
@@ -107,7 +112,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
 
     }else if(head == "omp_n    :"){
       readExtractData(0);
-      pdt[neutron ].omp = find_omp(::data);
+      pdt[neutron ].omp = find_omp(inputdata);
 
     }else if(head == "omp_p    :"){
       if(MAX_CHANNEL <= 2){
@@ -115,7 +120,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[proton  ].omp = find_omp(::data);
+      pdt[proton  ].omp = find_omp(inputdata);
 
     }else if(head == "omp_a    :"){
       if(MAX_CHANNEL <= 3){
@@ -123,7 +128,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[alpha   ].omp = find_omp(::data);
+      pdt[alpha   ].omp = find_omp(inputdata);
 
     }else if(head == "omp_d    :"){
       if(MAX_CHANNEL <= 4 ){
@@ -131,7 +136,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[deuteron].omp = find_omp(::data);
+      pdt[deuteron].omp = find_omp(inputdata);
 
     }else if(head == "omp_t    :"){
       if(MAX_CHANNEL <= 5){
@@ -139,7 +144,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[triton  ].omp = find_omp(::data);
+      pdt[triton  ].omp = find_omp(inputdata);
 
     }else if(head == "omp_h    :"){
       if(MAX_CHANNEL <= 6){
@@ -147,7 +152,7 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
         cohTerminateCode("readSystem");
       }
       readExtractData(0);
-      pdt[helion  ].omp = find_omp(::data);
+      pdt[helion  ].omp = find_omp(inputdata);
 
     }else if(head == "deform   :"){
       sys->beta2 = atof(readExtractData(0));
@@ -179,10 +184,20 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
     }else if(head == "massfile :"){
       massReadFile(readExtractData(0));
 
+    }else if(head == "select_z :"){
+      int z = readElementToZ(readExtractData(0));
+      fdt->selectZ = z;
+
+    }else if(head == "select_a :"){
+      fdt->selectA = atoi(readExtractData(0));
+
     }else if(head == "option   :"){
       string item = readExtractData(0);
       if(item == "internalconversion"){
         opt.internalconversion = true;
+      }
+      else if(item == "finegammaspectrum"){
+        opt.finegammaspectrum = true;
       }
       else{
         message << "no such option [" << item << "] in DATA";
@@ -194,6 +209,9 @@ int readSystem(char *s, System *sys, Pdata *pdt, BData *bdt)
       cohTerminateCode("readSystem");
     }
   }
+
+  /*** set spontaneous fission flag when no incident is given */
+  fdt->spontaneous = (sys->incident.pid == unknown) ? true : false;
 
   return(0);
 }
@@ -250,16 +268,16 @@ int readStatModel(char *s, GDR *gdr, Fission *fbr)
     }else if(head == "gdr      :"){
       if(j < MAX_GDR){
         readExtractData(0);
-        if(tolower(::data[0]) != 'e' && tolower(::data[0]) != 'm'){
-          message << "gamma-ray emission type " << ::data[0] << " not defined";
+        if(tolower(inputdata[0]) != 'e' && tolower(inputdata[0]) != 'm'){
+          message << "gamma-ray emission type " << inputdata[0] << " not defined";
           cohTerminateCode("readStatModel");
         }
-        if(::data[1] != '1' && ::data[1] != '2' && ::data[1] != '3'){
-          message << "gamma-ray multipolarity " << ::data[1] << " should be 1, 2, or 3";
+        if(inputdata[1] != '1' && inputdata[1] != '2' && inputdata[1] != '3'){
+          message << "gamma-ray multipolarity " << inputdata[1] << " should be 1, 2, or 3";
           cohTerminateCode("readStatModel");
         }
 
-        gdr[j].setXL( ::data );
+        gdr[j].setXL( inputdata );
         gdr[j].setEnergy ( atof(readExtractData(1)) );
         gdr[j].setWidth  ( atof(readExtractData(2)) );
         gdr[j].setSigma  ( atof(readExtractData(3)) );
@@ -357,6 +375,15 @@ int readFissionFragment(char *s, FFragData *fdt, BData *bdt)
     }else if(head == "chicalc  :"){
       bdt->setMode(fissionspec);
 
+    }else if(head == "YAfile   :"){
+      fdt->yafile = readExtractData(0);
+
+    }else if(head == "YTKEfile :"){
+      fdt->ytkefile = readExtractData(0);
+
+    }else if(head == "RTAfile  :"){
+      fdt->rtafile = readExtractData(0);
+
     }else{
       message << "unknown key-word [" << head << "] in FFRAG";
       cohTerminateCode("readFissionFragment");
@@ -427,6 +454,14 @@ int readMultiChanceFission(char *s, MultiChanceFissionData *mc)
       mc->GaussSigma[3] = atof(readExtractData(1));
       mc->GaussFract[7] = atof(readExtractData(2));
       mc->GaussSigma[7] = atof(readExtractData(3));
+
+    }else if(head == "finetune :"){
+      int    a = atoi(readExtractData(0));
+      double f = atof(readExtractData(1));
+      if(!mc->setFTune(a,f)){
+        message << "too many fine tune mass points";
+        cohTerminateCode("readMultiChanceFission");
+      }
 
     }else if(head == "ffydata  :"){
       mc->ffydata = readExtractData(0);
@@ -506,7 +541,7 @@ int readFgetOneline(char *s)
 /**********************************************************/
 char * readExtractData(int n)
 {
-  ::data[0] = '\0';
+  inputdata[0] = '\0';
 
   if( strlen(line.c_str())>W_HEAD ){
     string work = line;
@@ -522,10 +557,10 @@ char * readExtractData(int n)
         if(tok==NULL) break;
       }
     }
-    if(tok!=NULL) strncpy(&::data[0],tok,sizeof(::data)-1);
+    if(tok!=NULL) strncpy(&inputdata[0],tok,sizeof(inputdata)-1);
   }
 
-  return(&::data[0]);
+  return(&inputdata[0]);
 }
 
 
@@ -551,7 +586,7 @@ int readElementToZ(char *d)
 Particle readParticleIdentify(int n)
 {
   readExtractData(n);
-  char i = tolower(::data[0]);
+  char i = tolower(inputdata[0]);
 
   Particle p = unknown;
   switch(i){

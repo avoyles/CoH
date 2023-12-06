@@ -76,7 +76,7 @@ int omCalc
 //      Main Calculation
 
   /***  free space wave function */
-  cdt.lmax = omExternalFunction(0,pot.rho_match,lev.coulomb,lev.coulomb_scat0,&wfn);
+  cdt.lmax = omExternalFunction(0,pot.rho_match,lev.coulomb,&wfn);
 
   /***  internal wave function */
   complex<double> a, b;

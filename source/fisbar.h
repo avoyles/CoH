@@ -1,9 +1,5 @@
-/*
-   fisbar.h : 
-        define fission barrier parameter file location
-        prototype of function to read fission barrier parameters
- */
-
+// define fission barrier parameter file location
+// function to read fission barrier parameters
 
 #ifndef __DIR_H__
 #define __DIR_H_

@@ -29,7 +29,7 @@ static inline int cohEGrid      (int, double *);
 static inline int macsEGrid     (Particle);
 
 static System      sys;                  // system parameters
-static Dcapt       cap;                  // radiative capture parameters
+static Dcapt       cap;                  // radiative capture parameters for both DSD and Stat
 static FNSpec      fns(MAX_FISS_CHANCE); // fission neutron spectrum parameters
 static Pdata       pdt[MAX_CHANNEL];     // emitting particle data 
 static Direct      dir;                  // direct reaction parameters
@@ -110,6 +110,7 @@ void cohMainLoop(double elab, int targz, int targa, unsigned long nsim)
 
         /*** set up energy dependent parameters */
         setupGeneralParameter(&sys,pdt,&dir);
+
         cohCheckRange(&sys.target,sys.lab_energy);
         outSystem(&sys,prn.system);
 
@@ -117,6 +118,9 @@ void cohMainLoop(double elab, int targz, int targa, unsigned long nsim)
         if(sys.incident.pid != gammaray){
           jmax = cohEntranceChannel();
           if(jmax <= 0) continue;
+        }
+        else{
+          jmax = MAX_MULTIPOL / 2 + 1;
         }
 
         /*** DWBA */
@@ -245,7 +249,7 @@ void cohSuperLazy(double elab, int targz, int targa)
   if(targz < 60){
     if(MAX_CHANNEL>=2)  pdt[proton].omp   =  6; // Koning-Delaroche
     if(MAX_CHANNEL>=3)  pdt[alpha].omp    = 15; // Avrigeanu2009
-    if(MAX_CHANNEL>=4)  pdt[deuteron].omp = 17; // Bojowald
+    if(MAX_CHANNEL>=4)  pdt[deuteron].omp = 18; // Bojowald
 //  if(MAX_CHANNEL>=5)  pdt[triton].omp   =  2; // Becchetti
 //  if(MAX_CHANNEL>=6)  pdt[helion].omp   =  2; // Becchetti
   }
@@ -314,7 +318,6 @@ int cohEntranceChannel()
 /**********************************************************/
 void cohCheckRange(ZAnumber *t, double e)
 {
-/***  const double       emax = 150.0; */
   const double       emax = 200.0;
   const unsigned int zmin =     5;
   const unsigned int zmax =   118;
@@ -323,20 +326,20 @@ void cohCheckRange(ZAnumber *t, double e)
 
   string msg;
   bool rangechk = false;
-  if(e<=0.0 || e >emax){
-    msg = "incident energy out of range";
+  if((e <= 0.0) || (e > emax)){
+    message << "incident energy " << e << " out of range";
     rangechk = true;
   }
-  else if(t->getZ()<zmin || t->getZ()>zmax){
-    msg = "target Z-number out of range";
+  else if((t->getZ() < zmin) || (t->getZ() > zmax)){
+    message << "target Z-number " << t->getZ() << " out of range";
     rangechk = true;
   }
-  else if(t->getA()<amin || t->getA()>amax){
-    msg = "target A-number out of range";
+  else if((t->getA() < amin) || (t->getA() > amax)){
+    message << "target A-number " << t->getA() << " out of range";
     rangechk = true;
   }
 
-  if(rangechk) cohTerminateCode(msg);
+  if(rangechk) cohTerminateCode("cohCheckRagne");
 }
 
 
@@ -348,14 +351,20 @@ static inline int cohEGrid(int k, double *ein)
   int n = 0;
   double *e;
 
-  switch(k){
-  case  1: n = N_EGRID1; e = coh_egrid1; break;
-  case  2: n = N_EGRID2; e = coh_egrid2; break;
-  case  3: n = N_EGRID3; e = coh_egrid3; break;
-  default: n = 0       ; e = coh_egrid1; break;
+  if((1 <= k) && (k <= MAX_GRID_TYPE)){
+    switch(k){
+    case  1: n = N_EGRID1; e = coh_egrid1; break;
+    case  2: n = N_EGRID2; e = coh_egrid2; break;
+    case  3: n = N_EGRID3; e = coh_egrid3; break;
+    case  4: n = N_EGRID4; e = coh_egrid4; break;
+    default: n = 0       ; e = coh_egrid1; break;
+    }
+    for(int i=0 ; i<MAX_EINCIDENT ; i++) ein[i] = (i < n) ? e[i] : 0.0;
   }
-  
-  for(int i=0 ; i<MAX_EINCIDENT ; i++) ein[i] = (i < n) ? e[i] : 0.0;
+  else{
+    message << "default energy grid option " << k << " not defined";
+    cohTerminateCode("cohEgrid");
+  }
 
   return(n);
 }

@@ -18,6 +18,8 @@ static double LDmodel(double, double, LevelDensity *, LevelDensity *, const doub
 static double RTmodelParameter1(const int);
 static double RTmodelParameter2(const int);
 static double RTmodelParameter3(const int);
+static double RTmodelParameter4(LevelDensity *, LevelDensity *);
+static double RTmodelParameter9(const int);
 
 /**********************************************************/
 /*      Excitation Energy Sharing Model                   */
@@ -31,23 +33,25 @@ double beohExcitationEnergyDivide(ZAnumber *cL, ZAnumber *cH, double rt, double 
   double mL = (double)cL->getA();
   double mH = (double)cH->getA();
 
-  /*** some built-in RT models */
-  if(rt < 0.0){
-    int k = (int)abs(rt);
-    switch(k){
-    case  1: rt = RTmodelParameter1(cH->getA()); break;
-    case  2: rt = RTmodelParameter2(cH->getA()); break;
-    case  3: rt = RTmodelParameter3(cH->getA()); break;
-    default: rt = 1.0;                           break;
-    }
-  }
-
   /*** read shell correction and pairing energies */
   kckDataRead(cL,&ldpL);
   kckDataRead(cH,&ldpH);
 
   ldpL.a = kckAsymptoticLevelDensity(mL);
   ldpH.a = kckAsymptoticLevelDensity(mH);
+
+  /*** some built-in RT models */
+  if(rt < 0.0){
+    int k = (int)abs(rt);
+    switch(k){
+    case  1: rt = RTmodelParameter1(cH->getA());  break;
+    case  2: rt = RTmodelParameter2(cH->getA());  break;
+    case  3: rt = RTmodelParameter3(cH->getA());  break;
+    case  4: rt = RTmodelParameter4(&ldpL,&ldpH); break;
+    case  9: rt = RTmodelParameter9(cH->getA());  break;
+    default: rt = 1.0;                            break;
+    }
+  }
 
   double r = 0.0;
   if(rt > 0.0) r = RTmodel(mL,mH,&ldpL,&ldpH,rt,txe);
@@ -192,6 +196,9 @@ double RTmodelParameter2(const int mass)
     rt = (0.4-1.6)/(165.0-132.0) * (mass - 132) + 1.6;
   }
 
+  /*** to avoid too different temperature */
+  if(rt < 0.8) rt = 0.8;
+
   return rt;
 }
 
@@ -214,6 +221,38 @@ double RTmodelParameter3(const int mass)
 
   if(mass < ah0 || mass >= ah0+51) rt = 1.0;
   else rt = Pu239_RTAh[mass - ah0];
+
+  return rt;
+}
+
+
+
+/**********************************************************/
+/*      Shell Energy-dependent RT Parameterization        */
+/**********************************************************/
+double RTmodelParameter4(LevelDensity *ldpL, LevelDensity *ldpH)
+{
+  const double scale = 20.0;
+
+  double sc = ldpL->shell_correct + ldpH->shell_correct;
+  double rt = exp(- sc / scale);
+//cout <<"RT " << ldpL->shell_correct <<" " << ldpH->shell_correct<< " " << rt << endl;
+  return rt;
+}
+
+
+/**********************************************************/
+/*      Generic RT Parameterization                       */
+/**********************************************************/
+double RTmodelParameter9(const int mass)
+{
+  double rt = 1.0;
+  if(mass <= 132){
+    rt = 1.6;
+  }
+  else{
+    rt = (0.4-1.6)/(165.0-132.0) * (mass - 132) + 1.6;
+  }
 
   return rt;
 }

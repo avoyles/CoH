@@ -1,7 +1,4 @@
-/*
-   masstable_audi95.h :
-        nuclear masses from the Audi 1995 table, with FRDM
-*/
+// nuclear masses from the Audi 1995 table, with FRDM
 
 static const int nMassTable = 2931;
 

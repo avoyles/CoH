@@ -19,7 +19,7 @@ using namespace std;
 static void beohPopinitSingle (const double, const int, const int, const double, Nucleus *);
 static void beohPopinitLevden (const int, const double, const double, Nucleus *);
 static void beohPopinitFile (const string, Nucleus *);
-static void beohPopinitContDist (const int, const double, const double, const double, const double, Nucleus *);
+static void beohPopinitContDist (const int, const double, const double, const double, const double, Nucleus *, const double, const int);
 
 #undef POPDEBUG
 #ifdef POPDEBUG
@@ -81,7 +81,7 @@ void  beohInitialPopulationStat(const double q, const double j0, const int p0, c
   /* the excitation energy is distributed in the continuum */
   if(ew > 0.0){
     jmax = beohPopinitJmax(e0,n);
-    beohPopinitContDist(jmax,q,sf,e0,ew,n);
+    beohPopinitContDist(jmax,q,sf,e0,ew,n,j0,p0);
   }
   /* all population at the top energy bin */
   else{
@@ -201,7 +201,7 @@ void beohPopinitFile(const string fname, Nucleus *n)
 /**********************************************************/
 /*      Population Distributed in the Continuum           */
 /**********************************************************/
-void beohPopinitContDist(const int jmax, const double q, const double sf, double e0, double ew, Nucleus *n)
+void beohPopinitContDist(const int jmax, const double q, const double sf, double e0, double ew, Nucleus *n, const double j0, const int p0)
 {
   int k0 = 0;
   double sd, *g;
@@ -241,23 +241,27 @@ void beohPopinitContDist(const int jmax, const double q, const double sf, double
 
 
   /*** population = Gaussian x spin-distribution */
-  sp = 0.0;
-  for(int k=k0 ; k<=k1 ; k++){
-    double se = 0.0;
-    double so = 0.0;
-    for(int j=0 ; j<=jmax ; j++){
-      sd = ldSpinDistribution(j+halfint(n->lev[0].spin),n->ldp.spin_cutoff*sf,n->ldp.sigma0,1.0);
-      se += (p[k][j].even = g[k] * sd * ldParityDistribution( 1));
-      so += (p[k][j].odd  = g[k] * sd * ldParityDistribution(-1));
+  if(p0 == 0){
+    sp = 0.0;
+    for(int k=k0 ; k<=k1 ; k++){
+      double se = 0.0;
+      double so = 0.0;
+      for(int j=0 ; j<=jmax ; j++){
+        sd = ldSpinDistribution(j+halfint(n->lev[0].spin),n->ldp.spin_cutoff*sf,n->ldp.sigma0,1.0);
+        se += (p[k][j].even = g[k] * sd * ldParityDistribution( 1));
+        so += (p[k][j].odd  = g[k] * sd * ldParityDistribution(-1));
+      }
+      sp += se + so;
     }
-    sp += se + so;
+    for(int k=k0 ; k<=k1 ; k++){
+      for(int j=0 ; j<=jmax ; j++){
+        n->pop[k][j].even += q * p[k][j].even / sp;
+        n->pop[k][j].odd  += q * p[k][j].odd  / sp;
+      }
+    }
   }
-
-  for(int k=k0 ; k<=k1 ; k++){
-    for(int j=0 ; j<=jmax ; j++){
-      n->pop[k][j].even += q * p[k][j].even / sp;
-      n->pop[k][j].odd  += q * p[k][j].odd  / sp;
-    }
+  else{
+    for(int k=k0 ; k<=k1 ; k++) beohPopinitSingle(j0,p0,k,g[k],n);
   }
   
   for(int k=0 ; k<MAX_ENERGY_BIN ; k++){

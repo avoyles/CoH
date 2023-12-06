@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <iomanip>
 
 using namespace std;
 
@@ -14,8 +15,6 @@ using namespace std;
 #include "global.h"
 #include "terminate.h"
 
-
-static double photoGDR   (double, GDR *);
 static double photoQD    (const double, const int, const int);
 
 //  Fraction of QD, which goes into Pre-equilibrium calc
@@ -23,11 +22,12 @@ static double qdratio = 0.0;
 double photoQDratio()
 { return qdratio; }
 
+
 /**********************************************************/
 /*     Gamma-ray induced entrance channel calculation     */
 /*         GDR model and quasi deuteron break-Up          */
 /**********************************************************/
-double photoAbsorption(double eg, double kg, int targlev, Nucleus *n, Transmission *tin, GDR *gdr)
+double photoAbsorption(const int targlev, const int targid, const double eg, const double coef, Nucleus *n, Transmission *tin)
 {
   if(eg <= 0.0){
     message << "incident gamma-ray energy " << eg << " negative or zero";
@@ -36,20 +36,22 @@ double photoAbsorption(double eg, double kg, int targlev, Nucleus *n, Transmissi
 
   for(int j=0 ; j<3*MAX_J ; j++) tin->tran[j] = 0.0;
 
-  double te1 = gdrGammaTransmission(SL,E1,eg,n->ldp.a,n->excitation[0]);
-  double tm1 = gdrGammaTransmission(SL,M1,eg,0.0,0.0);
-  double te2 = gdrGammaTransmission(SL,E2,eg,0.0,0.0);
+  /*** calculate photon transmission coefficients */
+  double tg[MAX_MULTIPOL];
+  statStoreDiscreteGammaTransmission(eg,tg,n);
 
-  /*** GDR absorption */
-  double absgdr = 0.0;
-  for(int i=0 ; i<MAX_GDR ; i++){
-    absgdr += photoGDR(eg,&gdr[i]);
-  }
+  /*** the order of coefficients is special for the photon case,
+       (E0,M0,-), (E1,M1,-), (E2,M2,-) ... */
+  tin->tran[ 3] = tg[E1];
+  tin->tran[ 4] = tg[M1];
+  tin->tran[ 6] = tg[E2];
+  tin->tran[ 7] = tg[M2];
+  tin->tran[ 9] = tg[E3];
+  tin->tran[10] = 0.0;
+  tin->lmax = 3;
 
-  /*** recalculate SigR from transmissions */
-  absgdr =(  te1 * 3
-           + tm1 * 3
-           + te2 * 5) * PI/kg/kg * NORM_FACT / 2.0;
+  /*** GDR absorption, calculate SigR from transmissions */
+  double absgdr = statStoreInitPopulationPhoton(targlev,targid,coef,tin);
 
   /*** quasi-deutron absorption */
   double absqd  = photoQD(eg,n->za.getZ(),n->za.getA());
@@ -59,31 +61,10 @@ double photoAbsorption(double eg, double kg, int targlev, Nucleus *n, Transmissi
   double f = 1.0 + qdratio;
   qdratio = absqd / (absqd + absgdr);  if(qdratio > 1.0) qdratio = 1.0;
 
-  /*** insert transmission coefficients at L=1 and L=2 */
-  tin->tran[3] = (te1+tm1)*f/2.0;
-  tin->tran[6] = te2*f;
-  tin->lmax    = 2;
-
-  /*** set max J = I + 2 */
-  n->jmax = n->lev[targlev].spin + 2.0;
+  /*** set max J = I + Lmax */
+  n->jmax = n->lev[targlev].spin + tin->lmax;
 
   return(absgdr*f);
-}
-
-
-/**********************************************************/
-/*      GDR Absorption                                    */
-/**********************************************************/
-double photoGDR(double eg, GDR *gdr)
-{
-  double e = gdr->getEnergy();
-  double w = gdr->getWidth();
-  double s = gdr->getSigma();
-
-  double a = eg * eg * w * w;
-  double b = e * e - eg * eg;
-
-  return(s * a / (b * b + a));
 }
 
 

@@ -25,7 +25,7 @@ using namespace std;
 static void statPreequilibrium      (System *, Pdata *);
 static void statHauserFeshbach      (System *, Pdata *, Direct *);
 static void statParameterSetting    (System *, Pdata *, GDR *);
-static void statInitialPopulation   (System *, GDR *, Level *, Transmission *);
+static void statInitialPopulation   (System *, Level *, Transmission *);
 static void statReplaceTransmission (int, Level *, Nucleus *, int *, Transmission *, double **);
 static void statAllocateMemory      (void);
 static void statDeleteAllocated     (void);
@@ -62,8 +62,8 @@ int statModel
 
   if(ctl.exclusive) eclAllocateMemory(sys->max_compound,sys->max_channel);
 
-  /*** initial population in first CN */
-  statInitialPopulation(sys,cap->gdr,dir->lev,&tin);
+  /*** initial population in the first CN */
+  statInitialPopulation(sys,dir->lev,&tin);
   spc.memclear("cn");
   spc.memclear("pe");
   crx.specclear();
@@ -198,6 +198,9 @@ void statHauserFeshbach(System *sys, Pdata *pdt, Direct *dir)
     double gw = parmGetValue(parmBROD);
     if(gw > 0.0) specGaussianBroadening(MAX_ENERGY_BIN,ncl[0].de,gw,crx.spectra[0]);
     outSpectrum(2,crx.spectra,&ncl[0]);
+
+    /*** if finegammaspectrum option, print gamma-ray spectrum at finer energy grid */
+    if(opt.finegammaspectrum) outSpectrumFineGamma(crx.spectra[gammaray],&gml,&ncl[0]);
   }
 
   if(prn.xsection){
@@ -213,7 +216,7 @@ void statHauserFeshbach(System *sys, Pdata *pdt, Direct *dir)
     if(ctl.fission) outFission(sys->max_compound);
 
     /*** output particle production cross section */
-    outParticleProduction(sys->max_compound,ncl[0].cdt,crx.spectra);
+    if(!ctl.fns) outParticleProduction(sys->max_compound,ncl[0].cdt,crx.spectra);
   }
 }
 
@@ -257,7 +260,15 @@ void statParameterSetting(System *sys, Pdata *pdt, GDR *gdr)
   }
   
   /*** GDR parameters for the first CN */
-  statSetupGdrParameter(&ncl[0],ncl[0].ldp.a,gdr,sys->beta2);
+  statSetupGdrParameter(&ncl[0],gdr,sys->beta2);
+  /*** all others, we always use systematics, but assume the same deformation */
+  for(int i=1 ; i<sys->max_compound ; i++) statSetupGdrSystematics(&ncl[i],sys->beta2);
+
+  /*** read photo-absorption table when this option is activated */
+  if(opt.readphotoabsorption){
+    gdrAbsorptionDataRead();
+    statSetupResetGdrParameter(gdrAbsorptionDataYsize(),&ncl[0]);
+  }
 
   /*** photon strength function */
   double d0 = 0.0, gg = 0.0;
@@ -325,29 +336,35 @@ void statParameterSetting(System *sys, Pdata *pdt, GDR *gdr)
     outTargetState(sys->target_id,sys->target_level,sys->excitation);
     outCompound(sys->max_compound,pdt);
     outLevelDensity(sys->max_compound,d0);
-    outGDR(gdr,gg);
+    outGDR(false,sys->max_compound,gg);
     if(ctl.fission) outFissionBarrier(sys->max_compound);
   }
 
-  /*** discrete levels and level densities (non-standard) */
-  if(pex.gbranch)   extGammaBranch(sys->max_compound);
+  /*** discrete levels, level densities, and photon strength function (non-standard) */
+  if(pex.gbranch)   extGammaBranch();
   if(pex.cumulevel) extCumulativeLevels(&ncl[0]);
   if(pex.density)   extContinuumDensity(&ncl[0]);
   if(ctl.fission & pex.fisdensity) extFissionDensity(sys->max_compound);
+  if(pex.gammastf){
+    statStoreContinuumGammaTransmission(0,tg,&ncl[0]);
+    extGammaStrengthFunction(ncl[0].ntotal,ncl[0].de,tg);
+  }
 }
 
 
 /**********************************************************/
 /*      Initial Population for Particle/Photo-Incident    */
 /**********************************************************/
-void statInitialPopulation(System *sys, GDR *gdr, Level *dir, Transmission *tin)
+void statInitialPopulation(System *sys, Level *dir, Transmission *tin)
 {
+  double coef = NORM_FACT*PI/(sys->wave_number*sys->wave_number);
+
   /*** for photo-induced reactions */
   if(sys->incident.pid == gammaray){
     ctl.fluctuation = false;
     ctl.dsd = false;
     tin->tran = crx.transmission[0];
-    crx.reaction = photoAbsorption(sys->cms_energy,sys->wave_number,sys->target_level,&ncl[0],tin,gdr);
+    crx.reaction = photoAbsorption(sys->target_level,sys->target_id,sys->cms_energy,coef,&ncl[sys->target_id],tin);
   }
   /*** for particle induced reactions */
   else{
@@ -365,10 +382,9 @@ void statInitialPopulation(System *sys, GDR *gdr, Level *dir, Transmission *tin)
       }
       tin->tran = crx.transmission[kt];
     }
+    statStoreInitPopulation(sys->incident.spin2,sys->target_level,sys->target_id,coef,tin);
   }
 
-  double coef = NORM_FACT*PI/(sys->wave_number*sys->wave_number);
-  statStoreInitPopulation(sys->incident.spin2,sys->target_level,sys->target_id,coef,tin);
 
   if(sys->incident.pid == gammaray){
     statAdjustInitPopulation(crx.reaction);
@@ -450,8 +466,8 @@ void statAllocateMemory()
     }
 
     /*** allocate photon transmission array */
-    tg = new double * [MAX_MULTIPOL];
-    for(int i=0 ; i<MAX_MULTIPOL ; i++) tg[i] = new double [MAX_ENERGY_BIN];
+    tg = new double * [MAX_ENERGY_BIN];
+    for(int k=0 ; k<MAX_ENERGY_BIN ; k++) tg[k] = new double [MAX_MULTIPOL];
 
     /*** allocate energy spectra arrays */
     spc.memalloc(MAX_CHANNEL,MAX_ENERGY_BIN,MAX_LEVELS);
@@ -478,7 +494,7 @@ void statDeleteAllocated()
   delete [] tc;
   delete [] td;
 
-  for(int i=0 ; i<MAX_MULTIPOL ; i++) delete [] tg[i];
+  for(int k=0 ; k<MAX_ENERGY_BIN ; k++) delete [] tg[k];
   delete [] tg;
 
   spc.memfree();

@@ -196,7 +196,7 @@ void dwStoreDistortedWave(const int spin2, double nonloc, CCdata *cdt,
   complex<double>  *psave;
   complex<double> a,b,c,d;
 
-  cdt->lmax = omExternalFunction(0,pot->rho_match,cdt->lev->coulomb,cdt->lev->coulomb_scat0,wfn);
+  cdt->lmax = omExternalFunction(0,pot->rho_match,cdt->lev->coulomb,wfn);
   psave = wfn->internal;
 
   double spin = spin2/2.0;

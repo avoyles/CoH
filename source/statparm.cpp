@@ -23,7 +23,7 @@ static inline double binenergy(double d, int n)
 /**********************************************************/
 /*      Determine Energy Bin Width in Continuum           */
 /**********************************************************/
-double statBinWidth(double e)
+double statBinWidth(const double e)
 {
   return(  (  0.0<e && e<=  0.1)* 0.02
           +(  0.1<e && e<=  2.0)* 0.05
@@ -121,10 +121,10 @@ void statSetupLevelDensity(Nucleus *n, LevelDensity *ldp)
   else{
     /*** if sigma2 from the levels is very different from the systematics
          we take average of them */
-//    double rs = s0*s0 /(s1*s1);
-//    if((rs < 0.5) || (rs > 2.0)) ldp->sigma0 = sqrt((s0*s0 + s1*s1) * 0.5);
-//    else ldp->sigma0 = s0;
-    ldp->sigma0 = s0;
+    double rs = s0*s0 /(s1*s1);
+    if((rs < 0.5) || (rs > 2.0)) ldp->sigma0 = sqrt((s0*s0 + s1*s1) * 0.5);
+    else ldp->sigma0 = s0;
+//  ldp->sigma0 = s0;
   }
 
   /*** re-connect ConstTemp and Fermi Gas, because Nlevel can be changed */
@@ -163,64 +163,87 @@ void statSetupLevelDensity(Nucleus *n, LevelDensity *ldp)
 /**********************************************************/
 /*      Get GDR Parameters                                */
 /**********************************************************/
-void statSetupGdrParameter(Nucleus *n, double a, GDR *gdr, double beta)
+void statSetupGdrParameter(Nucleus *n, GDR *gdr, const double beta)
 {
-  /* set total number of GDR zero */
-  gdrParameterReset();
-
-  /*** scan GDR E1 parameters */
+  /*** scan GDR parameters if provided */
   bool gdrinput = false;
   for(int i=0 ; i<MAX_GDR ; i++){
-    if(gdr[i].getXL() == "E1"){
+    if(gdr[i].getXL() != "  "){
       gdrinput = true;
       break;
     }
   }
 
   /*** if no GDR parameters are given */
-  if(!gdrinput){
-    int m = 0, km1 = 0, ke2 = 0;
-    /*** get E1 parameters from systematics */
-    if(beta == 0.0){
-      gdrE1((double)n->za.getA(),beta,&gdr[m++]);
-    }else{
-      /*** second hump might be ignored if deformation is small */
-      gdrE1DoubleHump0((double)n->za.getA(),beta,&gdr[m]);  m++;
-      gdrE1DoubleHump1((double)n->za.getA(),beta,&gdr[m]);  if(gdr[m].getXL() == "E1") m++;
-    }
-    /*** M1 and E2 */
-    gdrM1((double)n->za.getA(),&gdr[m]);                      km1 = m; m++;
-    gdrE2((double)n->za.getZ(),(double)n->za.getA(),&gdr[m]); ke2 = m; m++;
-
-    /*** renormalize M1 photo cross section */
-    gdrM1norm((double)n->za.getA(),a,gdr);
-
-    /*** M2 and E3, if needed */
-    gdrM2(&gdr[km1],&gdr[m++]);
-    gdrE3(&gdr[ke2],&gdr[m++]);
-  
-    /*** M1 scissors */
-    if(beta != 0.0){
-      gdrM1scissors((double)n->za.getA(),beta,&gdr[m]);
-      gdr[m].setSigma(parmGetFactor(parmGDRM1) * gdr[m].getSigma());
-//  gdr[m].setEnergy(parmGetFactor(parmGDRM1) * gdr[m].getEnergy());
-//  gdr[m].setWidth(parmGetFactor(parmGDRM1) * gdr[m].getWidth());
-      m++;
-    }
-
-    /*** save parameters */
-    for(int i=0 ; i<m ; i++) gdrParameterSave(&gdr[i]);
-  }
+  if(!gdrinput) statSetupGdrSystematics(n,beta);
 
   /*** use input parameters */
   else{
     for(int i=0 ; i<MAX_GDR ; i++){
-      if(gdr[i].getXL() != "  ") gdrParameterSave(&gdr[i]);
+      if(gdr[i].getXL() != "  ") n->gdr[i] = gdr[i];
     }
   }
 
-  /*** save width predicted by droplet model */
-  gdrDropletGammaSave((double)n->za.getA());
+ /*** copy GDR parameters in the gtrans scope */
+  gdrParameterSave(n->gdr,n->za.getA());
+}
+
+
+/**********************************************************/
+/*      GDR Parameters from Internal Systematics          */
+/**********************************************************/
+void statSetupGdrSystematics(Nucleus *n, const double beta)
+{
+  int m = 0, km1 = 0, ke2 = 0;
+
+  /*** get E1 parameters from systematics */
+  if(beta == 0.0){
+    gdrE1((double)n->za.getA(),beta,&n->gdr[m++]);
+  }else{
+    /*** second hump might be ignored if deformation is small */
+    gdrE1DoubleHump0((double)n->za.getA(),beta,&n->gdr[m]);  m++;
+    gdrE1DoubleHump1((double)n->za.getA(),beta,&n->gdr[m]);  if(n->gdr[m].getXL() == "E1") m++;
+  }
+  /*** M1 and E2 */
+  gdrM1((double)n->za.getA(),&n->gdr[m]);                      km1 = m; m++;
+  gdrE2((double)n->za.getZ(),(double)n->za.getA(),&n->gdr[m]); ke2 = m; m++;
+
+  /*** renormalize M1 photo cross section */
+  gdrM1norm((double)n->za.getA(),n->ldp.a,n->gdr);
+
+  /*** M2 and E3, if needed */
+  gdrM2(&n->gdr[km1],&n->gdr[m++]);
+  gdrE3(&n->gdr[ke2],&n->gdr[m++]);
+  
+  /*** M1 scissors */
+  if(beta != 0.0){
+    gdrM1scissors((double)n->za.getA(),beta,&n->gdr[m]);
+    n->gdr[m].setSigma(parmGetFactor(parmGDRM1) * n->gdr[m].getSigma());
+//  n->gdr[m].setEnergy(parmGetFactor(parmGDRM1) * n->gdr[m].getEnergy());
+//  n->gdr[m].setWidth(parmGetFactor(parmGDRM1) * n->gdr[m].getWidth());
+    m++;
+  }
+}
+
+
+/**********************************************************/
+/*      Reset GDR Parameters When Given by External Data  */
+/**********************************************************/
+void statSetupResetGdrParameter(const int m, Nucleus *n)
+{
+  static string XL[MAX_MULTIPOL] = {"E1","M1","E2","M2","E3"};
+
+  for(int c = 0 ; c < MAX_MULTIPOL ; c++){
+
+    if(m > c){
+      for(int i=0 ; i<MAX_GDR ; i++){
+        if(n->gdr[i].getXL() == "  ") continue;
+
+        /*** when XL is given as external data, set this as "external" */
+        if(n->gdr[i].getXL() == XL[c]) n->gdr[i].setProfile(EX);
+      }
+    }
+  }
 }
 
 

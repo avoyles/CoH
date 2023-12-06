@@ -50,6 +50,10 @@ class BData{
   double exwidth;             // width of the excitation energy
   double energy;              // incident neutron energy
   double fraction;            // fractional contribution
+  string yafile;	      // user defined Y(A) model parameters
+  string ytkefile;	      // user defined Y(TKE|A) and TKE(E) model parameters
+  string rtafile;             // user defined R_T(A) distribution
+  double averagespin;         // average J of initial compound
 
   BData(){
     init();
@@ -66,6 +70,10 @@ class BData{
     exwidth        = 0.0;
     energy         = 0.0;
     fraction       = 1.0;
+    yafile	   = "";
+    ytkefile       = "";
+    rtafile	   = "";
+    averagespin    = 0.0;
   }
 
   void setMode(CalcMode m){
@@ -136,8 +144,8 @@ void    cohResetNuclearStructure (void);
 /**************************************/
 /*      beohmain.cpp                  */
 /**************************************/
-void    beohMainLoop (void);
-void    beohCGMCompatibleMode (const int, const int, const double, const int, const double, const double, const double, const double, const double);
+void    beohMainLoop (const unsigned long);
+void    beohCGMCompatibleMode (const int, const int, const double, const int, const double, const double, const double, const double, const double, const unsigned long);
 void    beohStoreStatPopulation (const int, const int, BData *);
 void    beohParameterSetting (System *, GDR *, const bool);
 int     beohZeroCut (double *);
@@ -163,12 +171,13 @@ void    setupInitSystem (int, Pdata *);
 void    setupClearParameter (int, System *, Pdata *, GDR *);
 void    setupGeneralParameter (bool, System *);
 int     setupStatModel (bool, int, System *, Pdata *);
+Pdata   setupParticle (const Particle);
 
 /**************************************/
 /*      beohdataread.cpp              */
 /**************************************/
 int     readHead (char *);
-int     readSystem (char *, System *, Pdata *, BData *);
+int     readSystem (char *, System *, Pdata *, FFragData *, BData *);
 int     readBeta (char *, Beta *);
 int     readStatModel (char *, GDR *, Fission *);
 int     readFissionFragment (char *, FFragData *, BData *);
@@ -195,9 +204,9 @@ void    beohFissionFragmentMain (System *, BData *, FFragData *, unsigned int);
 /**************************************/
 /*      beohffragdecay.cpp            */
 /**************************************/
-void    beohFFDecay (const int, System *, Pdata *, BData *, bool);
+void    beohFFDecay (const int, System *, Pdata *, BData *, GammaProduction *, bool);
 int     beohFFDecayPrep (System *, Pdata *);
-void    beohFFDecaySpec (System *, Pdata *, BData *, const int, const int, double *);
+void    beohFFDecaySpec (System *, Pdata *, BData *, GammaProduction *, const int, const int, double *);
 void    beohAverageEnergy (const int, double *, double *, double *, double **);
 void    beohFFDecayAllocateMemory (void);
 void    beohFFDecayDeleteAllocated (void);

@@ -351,7 +351,7 @@ int ccExternalFunction(double rm, Wavefunc *wfn, Collective *col)
    lmax0 = ((j%2) == 0) ? j/2 : j/2+1;
 
    double rhom = rm*col->lev[0].wave_number;
-   lmax0 = omExternalFunction(lmax0,rhom,col->lev[0].coulomb,col->lev[0].coulomb_scat0,&wfn[0]);
+   lmax0 = omExternalFunction(lmax0,rhom,col->lev[0].coulomb,&wfn[0]);
 
    for(int k=1 ; k<col->nlevel ; k++){
      rhom = rm*col->lev[k].wave_number;
@@ -360,7 +360,7 @@ int ccExternalFunction(double rm, Wavefunc *wfn, Collective *col)
        omExternalClosed(lmax0,-rhom,col->lev[k].coulomb,&wfn[k]);
      }
      else{
-       omExternalFunction(lmax0,rhom,col->lev[k].coulomb,col->lev[k].coulomb_scat0,&wfn[k]);
+       omExternalFunction(lmax0,rhom,col->lev[k].coulomb,&wfn[k]);
      }
    }
 

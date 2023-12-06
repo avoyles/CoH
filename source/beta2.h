@@ -1,8 +1,4 @@
-/*
-   beta2.h : 
-        read beta2 deformation in FRDM nuclear shape file
- */
-
+// read deformation in FRDM nuclear shape file
 
 #ifndef __DIR_H__
 #define __DIR_H_
@@ -12,4 +8,4 @@
 /**************************************/
 /*      beta2.cpp                     */
 /**************************************/
-double  beta2Read                     (ZAnumber *);
+double  beta2Read (ZAnumber *);

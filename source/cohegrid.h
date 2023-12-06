@@ -1,10 +1,11 @@
-/*
-   cohegrid.h : builtin input energy grid
- */
+// cohegrid.h : builtin input energy grid
+
+const int MAX_GRID_TYPE = 4;
 
 const int N_EGRID1 = 80;
 const int N_EGRID2 = 45;
 const int N_EGRID3 = 20;
+const int N_EGRID4 = 30;
 
 
 #ifndef COH_TOPLEVEL
@@ -27,6 +28,11 @@ static double coh_egrid2[N_EGRID2]={
 
 static double coh_egrid3[N_EGRID3]={
    1.000,   2.000,   3.000,   4.000,   5.000,   6.000,   7.000,   8.000,   9.000,  10.000,
+  11.000,  12.000,  13.000,  14.000,  15.000,  16.000,  17.000,  18.000,  19.000,  20.000};
+
+static double coh_egrid4[N_EGRID4]={
+   0.001,   0.005,   0.010,   0.050,   0.100,   0.200,   0.500,   0.600,   0.800,   1.000,
+   1.500,   2.000,   3.000,   4.000,   5.000,   6.000,   7.000,   8.000,   9.000,  10.000,
   11.000,  12.000,  13.000,  14.000,  15.000,  16.000,  17.000,  18.000,  19.000,  20.000};
 #endif
 

@@ -1,7 +1,4 @@
-/*
-   macs.h : 
-        incident energy grid for MACS calculation
- */
+// incident energy grid for MACS calculation
 
 const int N_REACTION_RATE = 12;
 const int N_MACS_EGRID = 30;

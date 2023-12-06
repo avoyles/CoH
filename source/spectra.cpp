@@ -19,11 +19,6 @@ using namespace std;
 #include "terminate.h"
 
 static double  specRenormReaction    ();
-static int     specPrimaryGamma      (Nucleus *, double **);
-static int     specCascadeGamma      (Nucleus *);
-
-static const double gammaline_eps = 1.0e-6;
-
 
 #undef DEBUG_POPCHECK
 #ifdef DEBUG_POPCHECK
@@ -64,7 +59,7 @@ void    spectra
 
     /*** Store particle transmission data into array */
     int k0 = 0;
-    if(c0!=0) statStoreContinuumTransmission(c0,ncl[c0].excitation[k0],pdt,tc);
+    if(c0 != 0) statStoreContinuumTransmission(c0,ncl[c0].excitation[k0],pdt,tc);
 
     /*** Clear spectrum array */
     spc->memclear("cn");
@@ -79,7 +74,7 @@ void    spectra
       spc->memclear("dp");
 
       /*** Store gamma-ray transmission data into array */
-      statStoreGammaTransmission(k0,tg,&ncl[c0]);
+      statStoreContinuumGammaTransmission(k0,tg,&ncl[c0]);
 
       /*** Initial binary reaction, including compound elastic */
       if((c0 == 0) && (k0 == 0) && (sys->incident.pid != gammaray)){
@@ -88,7 +83,7 @@ void    spectra
         specCompoundElastic(sys,renorm,tin,tc,td,tg,dir,spc);
 
         /*** Extract primary gamma-ray from level population */
-        spc->npg = specPrimaryGamma(&ncl[c0],spc->pg);
+        spc->npg = specStorePrimaryGamma(&ncl[c0],spc->pg,&gml);
 
         /*** Output discrete level population before gamma cascading */
         if(prn.levelexcite) outDiscreteLevelPopulation(sys->ex_total,&ncl[0]);
@@ -114,8 +109,10 @@ void    spectra
     /*** Particle decay from levels if possible */
     specLevelDecay(c0,pdt,&ncl[c0],tc,td,spc);
 
-    /*** Gamma-ray cascading, ground state population */
+    /*** Gamma-ray cascading  */
     specGammaCascade(spc->cn[0],&ncl[c0]);
+
+    /*** Add ground state population */
     crx.prod[c0].xsec += ncl[c0].lpop[0];
 
     /*** Add to total particle emission spectra */
@@ -129,7 +126,7 @@ void    spectra
     if(prn.population)  outPopulation(&ncl[c0]);
 
     /*** Store discrete gamma lines */
-    if(pex.gammaline) specCascadeGamma(&ncl[c0]);
+    if(pex.gammaline || opt.finegammaspectrum) specStoreDiscreteGamma(&ncl[c0],&gml);
   }
 
   /*** Output decay widths of initial compound nucleus */
@@ -168,24 +165,18 @@ void    spectraExclusive(System *sys, Pdata *pdt, Transmission *tin,
 
   for(int c0=0 ; c0<sys->max_compound ; c0++){
     int k0 = 0;
-    if(c0!=0) statStoreContinuumTransmission(c0,ncl[c0].excitation[k0],pdt,tc);
+    if(c0 != 0) statStoreContinuumTransmission(c0,ncl[c0].excitation[k0],pdt,tc);
 
     spc->memclear("cn");
 
     for(k0=0 ; k0<ncl[c0].ncont ; k0++){
-      statStoreGammaTransmission(k0,tg,&ncl[c0]);
+      statStoreContinuumGammaTransmission(k0,tg,&ncl[c0]);
 
-#ifdef DEBUG_POPCHECK
-      if(k0 == 0) specPopCheck(&ncl[c0]);
-#endif
-
-      spc->memclear("dp");
-
-      if( (c0 == 0) && (k0 == 0) ){
+      if((c0 == 0) && (k0 == 0) && (sys->incident.pid != gammaray)){
         specCompoundElastic(sys,renorm,tin,tc,td,tg,dir,spc);
 
         /*** Extract primary gamma-ray from level population */
-        spc->npg = specPrimaryGamma(&ncl[c0],spc->pg);
+        spc->npg = specStorePrimaryGamma(&ncl[c0],spc->pg,&gml);
 
         /*** For binary reactions, save discrete level population
              by particle only, and later subtract from the total population */
@@ -194,10 +185,6 @@ void    spectraExclusive(System *sys, Pdata *pdt, Transmission *tin,
           int p = ncl[c0].cdt[j].next;
           for(int i=0 ; i<ncl[p].ndisc ; i++) lp0[p][i] = ncl[p].lpop[i];
         }
-
-#ifdef DEBUG_POPCHECK
-        if(k0 == 0) specPopCheck(&ncl[c0]);
-#endif
 
       }else{
         statStoreDiscreteTransmission(c0,ncl[c0].excitation[k0],pdt,td);
@@ -228,6 +215,7 @@ void    spectraExclusive(System *sys, Pdata *pdt, Transmission *tin,
   }
 
   double reac = crx.total - crx.elastic;
+  if(crx.total == 0.0) reac = crx.reaction; // for non-neutron reaction
   for(int c0=0 ; c0<sys->max_compound ; c0++){
     for(int i=0 ; i<ncl[c0].ndisc ; i++){
       lp0[c0][i] /= reac;
@@ -276,76 +264,6 @@ double  specRenormReaction()
   }
 
   return(renorm);
-}
-
-
-/**********************************************************/
-/*      Primary Gamma-Ray Spectra                         */
-/*      -----                                             */
-/*             The primary gamma-ray emission cross       */
-/*             section should be the same as the level    */
-/*             population for the C0=0, K0=0 case         */
-/**********************************************************/
-int     specPrimaryGamma(Nucleus *n, double **pg)
-{
-  int ng = 0;
-
-  /*** copy non-zero production cross section to PG array */
-  for(int i=0 ; i<n->ndisc ; i++){
-    double eg = n->excitation[0] - n->lev[i].energy;
-    if(n->lpop[i] > 0.0){
-      pg[0][ng] = eg;
-      pg[1][ng] = n->lpop[i];
-      ng++;
-    }
-  }
-
-  if(pex.gammaline){
-    /*** primary gamma lines distinguished by negative energy */
-    for(int i=0 ; i<ng ; i++){
-      if(pg[1][i] > gammaline_eps){
-        gml.line[gml.n].za         = n->za;
-        gml.line[gml.n].energy     = -pg[0][i];
-        gml.line[gml.n].production = pg[1][i];
-        gml.n++;
-      }
-      if(gml.n == MAX_GAMMALINE) break;
-    }
-  }
-  
-  return(ng);
-}
-
-
-/**********************************************************/
-/*      Store Cascading Gamma Lines                       */
-/**********************************************************/
-int specCascadeGamma(Nucleus *n)
-{
-  int ng = 0;
-
-  for(int i0=n->ndisc-1 ; i0>0 ; i0--){
-    if( (n->lpop[i0] < gammaline_eps) && (i0 > 0) ) continue;
-
-    for(int j=0 ; j<n->lev[i0].ngamma ; j++){
-      int    i1 = n->lev[i0].fstate[j];
-
-      /*** discrete gamma-rays including internal conversion factor */
-      double p = n->lev[i0].branch[j] * n->lpop[i0];
-      if(opt.internalconversion) p *= n->lev[i0].gratio[j];
-
-      if(p > gammaline_eps){
-        gml.line[gml.n].za         = n->za;
-        gml.line[gml.n].energy     = n->lev[i0].energy - n->lev[i1].energy;
-        gml.line[gml.n].production = p;
-        ng ++;
-        gml.n++;
-      }
-      if(gml.n == MAX_GAMMALINE) return(ng);
-    }
-  }
-
-  return(ng);
 }
 
 

@@ -1,8 +1,4 @@
-/*
-   levden.h : 
-        prototype of functions for level density formulas
- */
-
+// functions for level density formulas
 
 /**************************************/
 /*      levden.cpp                    */

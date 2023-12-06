@@ -27,7 +27,7 @@ FNS      :
 
 # first chance fission
 fragment :  Sr   96     Xe  140
-energies :  186.98  171.8   6.71  4.998
+energies :  186.98  171.8 -0.2  6.71  4.998
 density  :  8.7273      12.7273    21.4545
 nuratio  : 1
 

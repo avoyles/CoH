@@ -9,11 +9,11 @@ using namespace std;
 unsigned int OMPtest(int zi, Optical *omp)
 {
   omp->v1  = 50.0;
-  omp->wv1 =  1.0;
-  omp->ws1 =  2.0;
+  omp->wv1 =  0.0;
+  omp->ws1 =  1.0;
 
 
-  omp->vso1=  6.0;
+  omp->vso1=  0.0;
 
   omp->r0  =  1.2;
   omp->rv  =  1.2;

@@ -54,7 +54,7 @@ void outPrepCumulativeResidual(const int n, const double fraction)
       /*** scan discrete states */
       meta = 1;
       for(int k=1 ; k<ncl[i].ndisc ; k++){
-        if(ncl[i].lev[k].halflife > thalfmin){
+        if(ncl[i].lev[k].halflife >= thalfmin){
           res.setData(ncl[i].za,meta,
                       ncl[i].lev[k].energy,
                       ncl[i].lev[k].spin,

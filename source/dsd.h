@@ -1,8 +1,4 @@
-/*
-   dsd.h : 
-        prototype of functions for DSD model, and constants
- */
-
+// functions for DSD model, and constants
 
 #define MAX_POINTS_BW   400  /* maximum radial points for bound wave   */
 #define MAX_SPLEVEL      50  /* maximum number of sp states            */

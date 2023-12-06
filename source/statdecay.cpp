@@ -15,8 +15,10 @@ using namespace std;
 #include "optical.h"
 #include "nucleus.h"
 #include "output.h"
+#include "outformat.h"
 #include "global.h"
 #include "ewtrans.h"
+#include "etc.h"
 
 
 static int     specCNDecaySpherical     (const int, const int, const int, const int, double,
@@ -27,10 +29,15 @@ static int     specCNDecayDeformed      (const int, const int, const int, const 
                                          double **, Spectra *, int *);
 static void    specCNDecayPreProcess    (System *, const int);
 static void    specCNDecayPostProcess   (Transmission **, Spectra *);
+static void    specContinuumAngularDistribution (const int, const int, Nucleus *);
+static void    specContinuumLegendreAllocate ();
+static void    specContinuumLegendreFree ();
 
 static bool    tstat[MAX_CHANNEL];
 static int     targid = 0, incid = 0, targlev = 0;
 static int     spinproj = 0, spings = 0, spintarg = 0, paritarg = 0;
+
+static double ***cleg; // Legendre coefficients in continuum, optional calc
 
 #undef SelectJPi
 
@@ -140,7 +147,10 @@ int     specCNDecaySpherical(const int c0, const int k0,
       Statcalcmode scm = (ctl.fluctuation) ? fluctuation : hauser;
       specTransmissionSum(scm,tstat,k0,p0,j0,tg,tc,td,dp,&ncl[c0],spc);
 
-      if(prn.angdist) specLegendreCoefficient(targid,incid,targlev,dp,p0,j0,lp0,jp0,td);
+      if(prn.angdist){
+        specLegendreCoefficient(targid,incid,targlev,dp,p0,j0,lp0,jp0,td);
+        if(opt.continuumangdist) specLegendreCoefficientContinuum(dp,p0,j0,lp0,jp0,tc,cleg);
+      }
 
       int jdx = (j0-spings)/2;
       if(p0 > 0) ncl[c0].pop[k0][jdx].even += pini;
@@ -285,6 +295,8 @@ void    specCNDecayPreProcess(System *sys, const int c0)
   spings   = (int)(2.0*halfint(ncl[c0].lev[0].spin));  // CN ground state spin
   spintarg = (int)(2.0*ncl[targid].lev[targlev].spin); // target state spin
   paritarg = ncl[targid].lev[targlev].parity;          // target state parity
+
+  if(opt.continuumangdist) specContinuumLegendreAllocate();
 }
 
 
@@ -313,7 +325,7 @@ void    specCNDecayPostProcess(Transmission **td, Spectra *spc)
     /*** First, output angular distributions for the inelastic scattering */
     int n = statInelAngularDistribution(incid,ncl[c0].jmax,td[incid]);
     outAngularDistribution(3,0,n,ANGLE_STEP,&ncl[targid].za);
-    outLegendreCoefficient(3,0,n,incid,&ncl[targid].za);
+    outLegendreCoefficient(3,0,n,incid,&ncl[targid].za,crx.legcoef);
 
     for(int id=1 ; id<MAX_CHANNEL ; id++){
       int c1 = ncl[c0].cdt[id].next;
@@ -327,9 +339,75 @@ void    specCNDecayPostProcess(Transmission **td, Spectra *spc)
         outAngularDistribution(3,0,n,ANGLE_STEP,&ncl[c1].za);
       }
 
-      for(n=0 ; n<MAX_ANGDISTLEVELS ; n++) if(td[id][n].lmax<=0) break;
-      outLegendreCoefficient(3,0,n,id,&ncl[c1].za);
+      for(n=0 ; n<MAX_ANGDISTLEVELS ; n++) if(td[id][n].lmax <= 0) break;
+      outLegendreCoefficient(3,0,n,id,&ncl[c1].za,crx.legcoef);
+    }
+
+    /*** angular distribution in continuum, optional calculation */
+    if(opt.continuumangdist){
+      for(int id=1 ; id<MAX_CHANNEL ; id++){
+        int c1 = ncl[c0].cdt[id].next;
+        if(!tstat[id]) continue;
+
+        outLegendreCoefficient(4,0,ncl[c1].ncont,id,&ncl[c1].za,cleg);
+        specContinuumAngularDistribution(id,ncl[c0].jmax,&ncl[c1]);
+      }
+      specContinuumLegendreFree();
     }
   }
 }
+
+
+/**********************************************************/
+/*      Pring Continuum Angular Distribution              */
+/**********************************************************/
+void specContinuumAngularDistribution(const int id, const int jmax, Nucleus *n)
+{
+  for(int k=0 ; k<n->ncont ; k++){
+    for(int i=0 ; i<MAX_ANGDIST ; i++){
+      double x = 0.0;
+      for(int l=0 ; l<jmax ; l+=2) x += cleg[id][k][l] * legendre(l,crx.costh[i]);
+      cout << setw(11) << cleg[id][k][MAX_J];
+      cout << setw(11) << crx.theta[i];
+      cout << setw(11) << x << endl;
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
+
+
+/**********************************************************/
+/*      Prepare Legendre Coeff. in Continuum              */
+/**********************************************************/
+void specContinuumLegendreAllocate()
+{
+  cleg = new double ** [MAX_CHANNEL];
+  for(int id=0 ; id<MAX_CHANNEL ; id++){
+    cleg[id] = new double * [MAX_ENERGY_BIN];
+    for(int k=0 ; k<MAX_ENERGY_BIN ; k++){
+      cleg[id][k] = new double [MAX_J+1]; // store excitation energy at MAX_J
+      for(int j=0 ; j<MAX_J+1 ; j++) cleg[id][k][j] = 0.0;
+    }
+  }
+
+  for(int id=1 ; id<MAX_CHANNEL ; id++){
+    if(!ncl[0].cdt[id].status) continue;
+    int c1 = ncl[0].cdt[id].next;
+    for(int k=0 ; k<ncl[c1].ncont ; k++){
+      cleg[id][k][MAX_J] = ncl[c1].excitation[k];
+    }
+  }
+}
+
+void specContinuumLegendreFree()
+{
+  for(int id=0 ; id<MAX_CHANNEL ; id++){
+    for(int k=0 ; k<MAX_ENERGY_BIN ; k++)  delete [] cleg[id][k];
+    delete cleg[id];
+  }
+  delete [] cleg;
+}
+
+
 

@@ -99,6 +99,7 @@ bool statForceIncludeMeta(NuclearStructure *d, Nucleus *n)
       d->lev[idx].ngamma    = 1;
       d->lev[idx].fstate[0] = 0;
       d->lev[idx].branch[0] = 1.0;
+      d->lev[idx].gratio[0] = 1.0;
       m++;
     }
     d->nlevel += ntop + m;
@@ -134,7 +135,6 @@ int statFixDiscreteLevels(NuclearStructure *d)
   init_by_array(seed,2L);
 
   double s0 = sqrt(kckSpinCutoff(d->za.getA()));
-//double s0 = sqrt(kckSpinCutoff(d->za.getA())) * 2.5;
   double c  = sqrt(PI2)*s0*s0*s0;
 
   for(int i=0 ; i<d->nlevel ; i++){

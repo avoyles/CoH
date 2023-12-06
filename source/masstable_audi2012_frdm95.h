@@ -1,7 +1,4 @@
-/*
-   masstable_audi2012_frdm95.h :
-        nuclear masses from the Audi 2012 table, with FRDM95
-*/
+// nuclear masses from the Audi 2012 table, with FRDM95
 
 static const int nMassTable = 9077;
 

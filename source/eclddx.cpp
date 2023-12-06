@@ -239,7 +239,7 @@ int ddxEnergyArray(const int c, const int km2, double de, double *ep, EXSpectra 
        and remove discrete level population part */
 
   if( n->getGcon() && (c != 0) ) epmax -= n->getEl();
-  if(epmax <= 0.0) return (0);
+  if(epmax <= ep[1]) return (0);
 
   /*** generate energy bins for spectrum */
   bool emx = true;

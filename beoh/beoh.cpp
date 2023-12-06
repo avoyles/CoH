@@ -44,10 +44,11 @@ static void     cohDeleteAllocated  (void);
 //---------------------------------------
 //      Extern variables defined in nucleus.h
 
-CrossSection      crx;                // cross section data
-Nucleus          *ncl;                // nucleus data
-NuclearStructure *nst;                // discrete level data
-Fission          *fbr;                // fission barrier data
+CrossSection      crx;               // cross section data
+GammaProduction   gml;               // gamma-ray line data 
+Nucleus          *ncl;               // nucleus data
+NuclearStructure *nst;               // discrete level data
+Fission          *fbr;               // fission barrier data
 
 string            version = "ver.1.2 (2017 Sep)";
 
@@ -96,11 +97,20 @@ int main(int argc, char *argv[])
 
 
   /*** excitation energy, Z, and A numbers from command line */
-  double        energy = 0.0, exwidth = 0.0, spinfact = 1.0, iniJ = 0.0, targE = 0.0, beta2 = 0.0;
-  string        elem  = "";
-  int           targZ = 0, targA = 0, iniP = 0;
+  double        energy   = 0.0; // nuclear excitation energy
+  double        exwidth  = 0.0; // distribution of excitation energy
+  double        spinfact = 1.0; // multiplication factor for initial spin distribution (sigma)
+  double        iniJ     = 0.0; // initial state spin, J
+  double        targE    = 0.0; // target kinetic energy, when moving
+  double        beta2    = 0.0; // deformation parameter
+  int           targZ    = 0;   // target Z number
+  int           targA    = 0;   // target A number
+  int           iniP     = 0;   // initial state parity, -1 or 1
+  unsigned long nsim     = 0;   // number of Monte Carlo sampling
+  string        elem     = "";  // element name
+
   int           x;
-  while((x = getopt(argc,argv,"p:e:d:a:z:j:J:f:k:b:h")) != -1){
+  while((x = getopt(argc,argv,"p:e:d:a:z:j:J:f:k:b:s:mh")) != -1){
     switch(x){
     case 'p': propt      = atoi(optarg);                  break;
     case 'e': energy     = atof(optarg);                  break;
@@ -119,6 +129,7 @@ int main(int argc, char *argv[])
     case 'f': spinfact   = atof(optarg);                  break;
     case 'k': targE      = atof(optarg);                  break;
     case 'b': beta2      = atof(optarg);                  break;
+    case 's': nsim       = atoi(optarg);                  break;
     case 'h': cohHelp();                                  break;
     case ':': cerr << "ERROR     :need a value for option " << x << endl;
               cohHelp();                                  break;
@@ -135,10 +146,10 @@ int main(int argc, char *argv[])
 
   /*** main part */
   if((targZ > 0) && (targA > 0) && (energy > 0.0)){
-    beohCGMCompatibleMode(targZ, targA, iniJ, iniP, energy, exwidth, spinfact, targE, beta2);
+    beohCGMCompatibleMode(targZ, targA, iniJ, iniP, energy, exwidth, spinfact, targE, beta2, nsim);
   }
   else{
-    beohMainLoop();
+    beohMainLoop(nsim);
   }
 
   /***  delete allocated memory */
@@ -157,6 +168,8 @@ void  cohOutputOptions(unsigned int p)
   prn.system       = p & PRN_SYSTEM;
   prn.xsection     = p & PRN_XSECTION;
   prn.spectra      = p & PRN_SPECTRA;
+  prn.gcascade     = p & PRN_GCASCADE;
+  prn.mchistory    = p & PRN_MCHISTORY;
 }
 
 
@@ -209,6 +222,9 @@ void cohAllocateMemory()
 
     /*** particle emission spectra */
     crx.spectalloc(MAX_CHANNEL+2,MAX_ENERGY_BIN);
+
+    /*** gamma-ray line array, need larger number for HF3D */
+    gml.memalloc(MAX_GAMMALINE*2,CUT_GAMMALINE);
 
     /*** factorial */
     factorial_allocate();

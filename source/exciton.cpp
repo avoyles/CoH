@@ -4,6 +4,7 @@
 /******************************************************************************/
 
 #include <iostream>
+#include <iomanip>
 #include <cstdlib>
 #include <cmath>
 
@@ -158,7 +159,7 @@ void preqParameterSetting(System *sys, Preeq *prq, SPdens *spd)
 /**********************************************************/
 void preqExcitonCalc(System *sys, Pdata *pdt, double sigcn, Exconf *ex0, Preeq *prq, Transmission **tc, Transmission **td, double **spc)
 {
-  /*** Transition Rates for Each Configurations */
+  /*** Transition Rates for Each Configuration */
   preqClearMemory();
   preqTransitionRate(sys,pdt,ex0,prq,tc);
 
@@ -298,7 +299,7 @@ double preqEmissionRate(Pdata *pdt, Transmission **tc, Preeq *prq, Exconf *exc)
 
     Exconf res(exc->zp - pdt[id].za.getZ(),exc->zh,
                exc->np - pdt[id].za.getN(),exc->nh);
-    if(res.zp<0 || res.np<0) continue;
+    if(res.zp < 0 || res.np < 0) continue;
 
     double rm = ncl[j].mass * pdt[id].mass
               /(ncl[j].mass + pdt[id].mass);
@@ -307,13 +308,18 @@ double preqEmissionRate(Pdata *pdt, Transmission **tc, Preeq *prq, Exconf *exc)
 
     for(int k=1 ; k<ncl[j].ntotal ; k++){
       double omega = preqStateDensity(ncl[j].excitation[k],&prq->spd[id],&res);
-      wkc[id][k]   = x * tc[id][k].ecms * tc[id][k].sigr * omega;
+      double coll  = preqCollectiveEnhancement(ncl[j].excitation[k],&res);
+
+      wkc[id][k]   = x * tc[id][k].ecms * tc[id][k].sigr * omega * coll;
       wt += wkc[id][k] * ncl[j].de;
 /*
-      printf("%2d%2d%2d%2d  %2d%4d  %10.4f %10.4f %11.4e %11.4e %11.4e %11.4e\n",
-             exc->zp,exc->zh,exc->np,exc->nh,id,k,
-             tc[id][k].ecms,ncl[j].excitation[k],
-             omega,prq->omega_total,tc[id][k].sigr,wkc[id][k]/HBAR);
+      if( (res.zp + res.np + res.zh + res.nh) == 2 ){
+        cout << setw(2) << exc->zp << setw(2) << exc->zh << setw(2) << exc->np << setw(2) << exc->nh;
+        cout << setw(4) << id << setw(4) << k;
+        cout << setw(11) << tc[id][k].ecms << setw(11) << ncl[j].excitation[k];
+        cout << setw(11) << omega << setw(11) << coll << setw(11) << prq->omega_total;
+        cout << setw(11) << tc[id][k].sigr << setw(11) << wkc[id][k]/HBAR << endl;
+      }
 */
     }
   }
@@ -337,10 +343,6 @@ void preqLifeTime(const int i, const int j, Preeq *prq, Exconf *exc)
   double d2 = tzp[i][j] + tnp[i][j]                         + wk[i][j];
   tau[i][j] = (d1 > 0.0) ? 1.0/d1 : 0.0;
   tap[i][j] = (d2 > 0.0) ? 1.0/d2 : 0.0;
-
-//  printf("%2d%2d  %11.4e %11.4e %11.4e %11.4e %11.4e   %11.4e  %11.4e\n",
-//         i,j,tzp[i][j],tnp[i][j],tz0[i][j],tn0[i][j],wk[i][j],tau[i][j],tap[i][j]);
-
 }
 
 

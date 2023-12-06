@@ -112,10 +112,4 @@ void statDirectSpectra(double ein, double de, Level *dir, double *spc, double *c
     int kp = specFindEnergyBin(eout,de);
     if(kp >= 0) spc[kp] += fabs(cdir[i])/de;
   }
-
-  /*** add shape elastic scattering */
-  if(crx.elastic > 0.0){
-    int kp = specFindEnergyBin(ein,de);
-    if(kp >= 0) spc[kp] += crx.elastic/de;
-  }
 }

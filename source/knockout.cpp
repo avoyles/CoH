@@ -17,6 +17,8 @@ using namespace std;
 
 /**********************************************************/
 /*      Alpha Knockout in Pre-Equilibrium Process         */
+/*      model and parameters taken from C. Kalbach Walker */
+/*      Users Manual for PRECO-2006 (2001)                */
 /**********************************************************/
 void    preqAlphaKnockout(System *sys, Pdata *pdt, Transmission **tc, Transmission **td, Spectra *spc)
 {
@@ -57,9 +59,9 @@ void    preqAlphaKnockout(System *sys, Pdata *pdt, Transmission **tc, Transmissi
   /*** Probability for exciting p-h pair */
   double p;
   int    n = sys->target.getN();;
-  if (116<=n && n<126)      p = 0.02 + 0.06*(126-n)/10.0;
-  else if (126<=n && n<120) p = 0.02 + 0.06*(n-126)/ 3.0;
-  else                      p = 0.08;
+  if( (116 < n) && (n < 126) )       p = 0.02 + 0.06*(126-n)/10.0;
+  else if( (126 <= n) && (n < 129) ) p = 0.02 + 0.06*(n-126)/ 3.0;
+  else                               p = 0.08;
   double pb = p*sys->target.getZ()*0.5 / (sys->target.getA() - 1.5*p*sys->target.getZ());
 
   /*** Pauli correction */

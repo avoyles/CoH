@@ -7,20 +7,23 @@ using namespace std;
 
 #include "ffp.h"
 
-static void   Gaussian_U235  (const double, double *, double *, double *);
-static void   Gaussian_U238  (const double, double *, double *, double *);
+static void   Gaussian_U235 (const double, double *, double *, double *);
+static void   Gaussian_U238 (const double, double *, double *, double *);
 static void   Gaussian_Pu239 (const double, double *, double *, double *);
 static void   Gaussian_Cf252 (const double, double *, double *, double *);
 
 static double TKEenergy_U235 (const double, const int, const double);
+static double TKEenergy_U238 (const double, const int, const double);
 static double TKEenergy_Pu239 (const double, const int, const double);
 static double TKEenergy_Cf252 ();
 
 static double TKEmass_U235 (int, double);
+static double TKEmass_U238 (int, double);
 static double TKEmass_Pu239 (int, double);
 static double TKEmass_Cf252 (const int);
 
 static double TKEwidth_U235 (const bool);
+static double TKEwidth_U238 (const bool);
 static double TKEwidth_Pu239 (const bool, const int);
 static double TKEwidth_Cf252 (const bool);
 
@@ -51,6 +54,9 @@ void FFPGaussianParameters(const bool sf, const int zf, const int af, const doub
     /* U235 */
     if(zf == 92){
       switch(af){
+      case 230:
+      case 231:
+      case 232:
       case 233:
       case 234:
       case 235:
@@ -78,6 +84,51 @@ void FFPGaussianParameters(const bool sf, const int zf, const int af, const doub
 
 
 /**********************************************************/
+/*      TKE as a function of A from input parameters      */
+/**********************************************************/
+double FFPConstructTKEA(const int af, const int a, double *tkea)
+{
+  double tke = 0.0;
+  double am = 0.5 * af;
+  double ah = a;
+
+  double da = ah - am;
+  if(da < 0.1) ah = af - a;
+
+  tke = (tkea[0] - tkea[1]*ah) * (1.0 - tkea[2]*exp(-(da*da)/tkea[3]));
+
+  return tke;
+}
+
+
+/**********************************************************/
+/*     sigma_TKE as a function of A from input parameters */
+/**********************************************************/
+double FFPConstructSigmaTKEA(const int af, const int a, double *stkea)
+{
+  double stke = 0.0;
+  double am = 0.5 * af;
+  double ah = a;
+
+  if (ah - am < 0.1) ah = af - a;
+
+  //double A0 = stkea[0];
+
+  double x = ah - am;
+
+  stke = stkea[0] + stkea[1]*exp(-stkea[2]*x*x);
+
+  //stke = stkea[1];
+  //double x = ah - A0;
+  //for (int i=2; i<=9; i++){
+  //  stke += stkea[i] * x;
+  //  x *= ah - A0;
+  //}
+  return stke;
+}
+
+
+/**********************************************************/
 /*      TKE as a function of pre-A                        */
 /**********************************************************/
 double FFPSystematics_TKE_A(const bool sf, const int zf, const int af, const int a, const double t0)
@@ -93,7 +144,8 @@ double FFPSystematics_TKE_A(const bool sf, const int zf, const int af, const int
   }
   else{
     if(zf == 92){
-      if((233 <= af) && (af <=236)) tke = TKEmass_U235(ah,am);
+      if((230 <= af) && (af <= 236)) tke = TKEmass_U235(ah,am);
+      else if((237 <= af) && (af <= 239)) tke = TKEmass_U238(ah,am);
     }
     else if(zf == 94){
       if((236 <= af) && (af <= 240)) tke = TKEmass_Pu239(ah,am);
@@ -127,7 +179,8 @@ double FFPSystematics_TKE_A_Width(const bool sf, const int zf, const int af, con
   }
   else{
     if(zf == 92){
-      if((233 <= af) && (af <=236)) dtke = TKEwidth_U235(constwidth);
+      if((230 <= af) && (af <= 236)) dtke = TKEwidth_U235(constwidth);
+      else if((237 <= af) && (af <= 239)) dtke = TKEwidth_U238(constwidth);
     }
     else if(zf == 94){
       if((236 <= af) && (af <= 240)) dtke = TKEwidth_Pu239(constwidth,ah);
@@ -156,7 +209,8 @@ double FFPSystematics_TKE_En(const bool sf, const int zf, const int af, const do
   }
   else{
     if(zf == 92){
-      if((233 <= af) && (af <=236)) tke = TKEenergy_U235(en,af,tke0);
+      if((233 <= af) && (af <= 236)) tke = TKEenergy_U235(en,af,tke0);
+      else if((237 <= af) && (af <= 239)) tke = TKEenergy_U238(en,af,tke0);
     }
     else if(zf == 94){
       if((236 <= af) && (af <= 240)) tke = TKEenergy_Pu239(en,af,tke0);
@@ -254,13 +308,55 @@ double TKEwidth_U235(const bool cw)
 
 
 /**********************************************************/
-/*      U238                                              */
+/*      U238                          from Okumura (2022) */
 /**********************************************************/
 /* data from Vives 2000 */
 void Gaussian_U238(const double en, double *fs, double *fd, double *fr)
 {
   static double p[] = {-2.167787, 5.0323, 135.16,  -0.09, 3.3868, 0.0142, -2.224051, -5.1629, 142.20,  -0.16, 5.5624, 0.1048, 10.0092, 0.0153};
   YAmodel_CGMF(239.0,en,p,fs,fd,fr);
+}
+
+
+double TKEenergy_U238(const double en, const int af, const double tke0)
+{
+  double tke = 0.0;
+  if(af == 239){
+    double p1 = 171.072;
+    double p2 = -0.311464;
+    tke = p1 + p2 * en;
+  }
+  else{
+    double tke1 = -0.320;
+    tke = tke0 + tke1 * en;
+  }
+
+  return tke;
+}
+
+
+double TKEmass_U238(int ah, double am)
+{
+  double p1 = 348.371;
+  double p2 = 1.274;
+  double p3 = 0.1800;
+  double p4 = 59.199;
+
+  double da = ah - am;
+  if(da < 0.1) ah = am + 1.0;
+  double tke = (p1 - p2 * ah) * (1.0 - p3 * exp(-da * da / p4));
+
+  return tke;
+}
+
+
+double TKEwidth_U238(const bool cw)
+{
+  double dtke = 0.0;
+  if(cw) dtke = 8.0;
+  else   dtke = TKEsave * 0.04;
+
+  return dtke;
 }
 
 

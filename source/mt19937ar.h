@@ -1,7 +1,4 @@
-/*
-   mt19937ar.h : 
-        interface to C-code, MT19937
- */
+// interface to C-code, MT19937
 
 /**************************************/
 /*      mt19937ar.c                   */

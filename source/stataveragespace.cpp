@@ -114,7 +114,7 @@ void    statDecayWidth(System *sys, Pdata *pdt,
 
   /*** calculate transmission coefficients */
   statStoreContinuumTransmission(c0,n0->excitation[k0],pdt,tc);
-  statStoreGammaTransmission(k0,tg,n0);
+  statStoreContinuumGammaTransmission(k0,tg,n0);
   statStoreDiscreteTransmission(c0,n0->excitation[k0],pdt,td);
 
   /*** determine level density at neutron separation energy */

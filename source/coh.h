@@ -1,6 +1,4 @@
-/*
-   coh.h : prototype of top level functions
- */
+// coh top level functions
 
 // Define each section-head to be read in a file
 enum section{BEGIN,DATA,DWBA,DSD,PREEQ,HFS,FNS,MFT,END};

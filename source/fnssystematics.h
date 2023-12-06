@@ -1,3 +1,5 @@
+// empirical systematics for fission spectrum calculation
+
 double fnsNubar               (const double, const double, const double, const double);
 double fnsTKESystematics      (const int, const int);
 double fnsTKEEdepSystematics  (const int);

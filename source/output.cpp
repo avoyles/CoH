@@ -21,9 +21,6 @@ using namespace std;
 #include "elements.h"
 #include "global.h"
 
-#define PRINT_BANNER
-
-
 
 /**********************************************************/
 /*      Global Parameters                                 */
@@ -46,7 +43,10 @@ void outSetSigmaReaction(const int n)
 {
   sigR = 0.0;
   for(int i=0 ; i<n ; i++) if(crx.prod[i].xsec > 0.0) sigR += crx.prod[i].xsec;
+  if(sigR == 0.0) sigR = crx.reaction;
 }
+
+double outRetrieveLabE(void){ return labE; }
 
 #include "outbanner.h"
 #include "outformat.h"
@@ -58,7 +58,7 @@ void outSetSigmaReaction(const int n)
 void outTitle(char *str)
 {
 #ifdef PRINT_BANNER
-  outBanner();
+  outBanner1();
 #endif
   outSectionHead(&version[0]);
   cout <<cline;
@@ -247,28 +247,50 @@ void outLevelDensity(const int n, double d0)
 /**********************************************************/
 /*      GDR Parameter                                     */
 /**********************************************************/
-void outGDR(GDR *gdr, double gg)
+void outGDR(const bool printall, const int n, const double gg)
 {
   outSectionHead("GIANT DIPOLE RESONANCE DATA");
   if(gg > 0.0){
-    cout << cline << "Energy[MeV] Width[MeV] Sigma0[mb] <Gam>[MeV]" << endl;
+    cout << cline << "Energy[MeV] Width[MeV] Sigma0[mb] <Gam>[MeV] Profile" << endl;
   }
   else{
-    cout << cline << "Energy[MeV] Width[MeV] Sigma0[mb]" << endl;
-  }
-  for(int i=0 ; i<MAX_GDR ; i++){
-    if(gdr[i].getEnergy() > 0.0){
-      cout << "         " << gdr[i].getEM() << setw(1) << gdr[i].getL();
-      outVal(11,4,gdr[i].getEnergy());
-      outVal(11,4,gdr[i].getWidth());
-      outVal(11,6,gdr[i].getSigma()); nl();
-    }
-  }
-  if(gg > 0.0){
-    cout << "   Average Gamma Width" << blank << blank;
-    outVal(gg); nl();
+    cout << cline << "Energy[MeV] Width[MeV] Sigma0[mb]            Profile" << endl;
   }
 
+  for(int i=0 ; i<n ; i++){
+    if(printall){ outZA(&ncl[i].za); nl(); }
+
+    for(int k=0 ; k<MAX_GDR ; k++){
+      if(ncl[i].gdr[k].getEnergy() > 0.0){
+        cout << "         " << ncl[i].gdr[k].getEM() << setw(1) << ncl[i].gdr[k].getL();
+        string prof;
+        if(ncl[i].gdr[k].getProfile() == EX){
+          prof = "External";
+          cout << blank << blank << blank << blank << prof;
+        }
+        else{
+          outVal(11,4,ncl[i].gdr[k].getEnergy());
+          outVal(11,4,ncl[i].gdr[k].getWidth());
+          outVal(11,6,ncl[i].gdr[k].getSigma());
+
+          switch(ncl[i].gdr[k].getProfile()){
+          case SL: prof = "SL"; break;
+          case GL: prof = "GL"; break;
+          case ML: prof = "ML"; break;
+          default: prof = "  "; break;
+          }
+          cout << blank << "      " << prof;
+        }
+        nl();
+      }
+    }
+    if((gg > 0.0) && (i == 0)){
+      cout << "   Average Gamma Width" << blank << blank;
+      outVal(gg); nl();
+    }
+
+    if(!printall) break;
+  }
 }
 
 
@@ -539,29 +561,28 @@ void outParticleProduction(const int n, Channel *cdt, double **spc)
   /*** for gamma-ray, use the emission spectrum */
   int kmax = (int)(ncl[0].max_energy/ncl[0].de) +1;
   for(int k=0 ; k<kmax ; k++){
-    sum[0] += spc[0][k] * ncl[0].de;
+    sum[gammaray] += spc[gammaray][k] * ncl[0].de;
     for(int j=0 ; j<MAX_CHANNEL ; j++){
       if(cdt[j].status) ave[j] += spc[j][k] * ncl[0].de * k * ncl[0].de;
     }
   }
-
   
   outSectionHead("PARTICLE PRODUCTION");
   cout << cline << "   Particle  Prod.[mb] Multiplic. Emean[MeV]" << endl;
 
   cout << " ParticlPrd" << particle_name[0];
   outVal(lowfilter(sum[0]));
-  cout << dashl;
+  outVal(lowfilter(sum[0] / sigR));
   outVal(lowfilter(ave[0] / sum[0])); nl();
 
   for(int j=1 ; j<MAX_CHANNEL ; j++){
     if (!cdt[j].status) continue;
 
     /*** particle multiplicity and average energy */
+    cout << " ParticlPrd" << particle_name[j];
+
     double mp = sum[j] / sigR;
     double em = (sum[j] == 0.0) ? 0.0 : ave[j] / sum[j];
-
-    cout << " ParticlPrd" << particle_name[j];
     outVal(lowfilter(sum[j])); outVal(lowfilter(mp)); outVal(lowfilter(em)); nl();
   }
   nl();
@@ -630,7 +651,7 @@ void outAngularDistribution(const int ctl, int n0, int np, int step, ZAnumber *z
 /**********************************************************/
 /*      Legendre Coefficients                             */
 /**********************************************************/
-void outLegendreCoefficient(const int ctl, int n0, int np, int id, ZAnumber *za)
+void outLegendreCoefficient(const int ctl, int n0, int np, int id, ZAnumber *za, double ***cl)
 {
   if(crx.theta[0] == 0.0) return;
 
@@ -657,6 +678,8 @@ void outLegendreCoefficient(const int ctl, int n0, int np, int id, ZAnumber *za)
       }
     }
     break;
+  case 4:
+    outSectionHead("COMPOUND REACTION LEGENDRE COEFFICIENTS IN CONTINUUM");
   default:
     break;
   }
@@ -668,14 +691,17 @@ void outLegendreCoefficient(const int ctl, int n0, int np, int id, ZAnumber *za)
 
     cout << cline; outZA(za);  cout << endl;
     cout << "#        L ";
-    for(int j=p*column+n0 ; j<=m+n0 ; j++) cout << setw(3) << j << "th level";
+    for(int j=p*column+n0 ; j<=m+n0 ; j++){
+      if(ctl == 4) outVal(11,3,cl[id][j][MAX_J]);
+      else         cout << setw(3) << j << "th level";
+    }
     nl();
 
     int jmax = 0;
     for(int j=MAX_J-1 ; j>=0 ; j--){
       bool flag = false;
       for(int k=p*column+n0 ; k<=m+n0 ; k++){
-        if(crx.legcoef[id][k][j] != 0.0){ flag = true; break; }
+        if(cl[id][k][j] != 0.0){ flag = true; break; }
       }
       if(flag){ jmax = j+1; break; }
     }
@@ -686,8 +712,8 @@ void outLegendreCoefficient(const int ctl, int n0, int np, int id, ZAnumber *za)
       outVal(10,j);
       cout << " ";
       for(int k=p*column+n0 ; k<=m+n0 ; k++){
-        double x0 = crx.legcoef[id][k][0];
-        double x1 = (x0>0.0) ? crx.legcoef[id][k][j]/x0/(2.0*j+1.0) : 0.0;
+        double x0 = cl[id][k][0];
+        double x1 = (x0 > 0.0) ? cl[id][k][j]/x0/(2.0*j+1.0) : 0.0;
         cout << setprecision(3) << setw(11) << lowfilter(x1);
       }
       nl();
@@ -721,7 +747,7 @@ void outSpectrum(const int ctl, double **spc, Nucleus *n)
 
   cout << cline;
   if(ctl == 0) outZA(&n->za);
-  cout << endl;
+  nl();
 
   cout << "# Emin[MeV]  Emax[MeV]";
   for(int j=0 ; j<MAX_CHANNEL ; j++){
@@ -751,16 +777,127 @@ void outSpectrum(const int ctl, double **spc, Nucleus *n)
 
 
 /**********************************************************/
+/*      Finer Gamma-Ray Spectra                           */
+/**********************************************************/
+void outSpectrumFineGamma(double *gc, GammaProduction *gp, Nucleus *n)
+{
+  double dec = n->de;
+  double del = FINE_GRID;
+
+  /*** find the highest bin of the continuum spectrum */
+  int mc;
+  for(mc=MAX_ENERGY_BIN - 1 ; mc>=0.0 ; mc--) if(gc[mc] != 0.0) break;
+  mc ++;
+
+  int ml = (mc * dec) / del; // number of finer bins
+
+  double el0, el1, ec0, ec1, gc0 = 0.0, gc1 = 0.0;
+  double *gxc = new double [ml + 1]; // re-binned continuum spec
+  double *gxl = new double [ml + 1]; // spectrum for discrete transitions
+
+  /*** adjust continuum spectrum by subtracting discrete gammas */
+  for(int kl=0 ; kl<=ml ; kl++) gxc[kl] = 0.0;
+
+  int mc0 = 0;
+  for(int kc=0 ; kc<mc-1 ; kc++){
+    ec0 = (kc == 0) ? 0.0 : (kc-0.5)*dec;
+    ec1 = (kc+0.5)*dec;
+    /*** first copy the continuum spectrum x bin width = area */
+    gc0 = gc[kc] * dec;
+
+    /*** subtract lines */
+    for(int i=0 ; i<gp->getN() ; i++){
+      if( (ec0 <= gp->line[i].energy) && (gp->line[i].energy < ec1) ){
+        gc0 -= gp->line[i].production;
+        mc0 = kc; // remember the highest bin number that was corrected
+      }
+    }
+
+    if(gc0 < 0.0) gc0 = 0.0; // avoid round-off error
+
+    /*** re-bin the continuum same as the finer grid */
+    for(int kl=0 ; kl<=ml ; kl++){
+      el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+      el1 = (kl+0.5)*del;
+
+      if( (ec0 <= el0) && (el1 <= ec1) ){ // when finer bin is inside wider bin
+        gxc[kl] += gc0 * del / dec;
+      }
+      else if( (el0 <= ec0) && (ec0 < el1) ){ // when boundary overlaps
+        if(kc != 0) gxc[kl] += gc1 * (ec0 - el0) / dec;
+        gxc[kl] += gc0 * (el1 - ec0) / dec;
+      }
+    }
+    gc1 = gc0; // previous data (kc-1)
+  }
+  mc0 ++;
+
+  /*** bining discrete lines */
+  for(int kl=0 ; kl<=ml ; kl++){
+    el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+    el1 = (kl+0.5)*del;
+    gxl[kl] = 0.0;
+    for(int i=0 ; i<gp->getN() ; i++){
+      if( (el0 <= gp->line[i].energy) && (gp->line[i].energy < el1) ) gxl[kl] += gp->line[i].production;
+    }
+    /*** convert them into /MeV unit */
+    gxl[kl] /= del;
+    gxc[kl] /= del;
+  }
+
+  int mx0 = ml; // highest bin where discrete line data exist
+  for(mx0=ml ; mx0>=0 ; mx0--) if(gxl[mx0] != 0.0) break;
+  mx0 ++;
+
+
+  outSectionHead("GAMMARAY SPECTRA FOR DISCRETE TRANSITIONS");
+
+  cout << cline;
+  outZA(&n->za);
+  nl();
+
+  cout << "# Emin[MeV]  Emax[MeV] Disc[mb/MeV] Cont[mb/MeV]  Sum[mb/MeV]" << endl;
+
+  for(int kl=0 ; kl<=mx0 ; kl++){
+    el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+    el1 = (kl+0.5)*del;
+    outVal(11,5,el0);
+    outVal(11,5,el1);
+    outVal(13,lowfilter(gxl[kl]));
+    outVal(13,lowfilter(gxc[kl]));
+    outVal(13,lowfilter(gxl[kl] + gxc[kl]));
+    nl();
+  }
+
+  for(int kc=mc0 ; kc<mc ; kc++){
+    ec0 = (kc == mc0) ? el1 : (kc-0.5)*dec;
+    ec1 = (kc+0.5)*dec;
+    outVal(11,5,ec0);
+    outVal(11,5,ec1);
+    outVal(13,0.0);
+    outVal(13,lowfilter(gc[kc]));
+    outVal(13,lowfilter(gc[kc]));
+    nl();
+  }
+  nl();
+  nl();
+
+  delete [] gxc;
+  delete [] gxl;
+}
+
+
+/**********************************************************/
 /*      Sum All Spectrum                                  */
 /**********************************************************/
-void outSpectrumSum(const int ctl, double ** spc, Nucleus * n)
+void outSpectrumSum(const int ctl, double **spc, Nucleus *n)
 {
   double sum[MAX_CHANNEL],ave[MAX_CHANNEL];
   int    kmax = (int)(n->max_energy/n->de) +1;
 
   for(int j=0 ; j<MAX_CHANNEL ; j++){
     sum[j] = ave[j] = 0.0;
-    if (!n->cdt[j].status) continue;
+    if(!n->cdt[j].status) continue;
     int p = n->cdt[j].next;
     int k = (int)(ncl[p].max_energy/ncl[p].de);
     if(k > kmax) kmax = k;
@@ -828,6 +965,27 @@ void outPrimaryGammaSpectrum(const int ng, double **spc, Nucleus *n)
     cout << blank;
     outVal(          spc[0][i] );
     outVal(lowfilter(spc[1][i]));
+    nl();
+  }
+  nl();
+  nl();
+}
+
+
+/**********************************************************/
+/*      All Discrete Gamma Lines                          */
+/**********************************************************/
+void outDiscreteGamma(GammaProduction *gp)
+{
+  outSectionHead("DISCRETE GAMMA PRODUCTION");
+
+  cout << "#       Z   A  Energy[MeV]   Production" << endl;
+  for(int i=0 ; i<gp->getN() ; i++){
+    outVal(5,i+1);
+    outVal(4,gp->line[i].za.getZ());
+    outVal(4,gp->line[i].za.getA());
+    outVal(13,7,gp->line[i].energy);
+    outVal(13,gp->line[i].production);
     nl();
   }
   nl();
@@ -1151,9 +1309,11 @@ void outFissionNeutronEnergy(const int mc, double e, double nu, double *pf, FNSp
   outVal(11,4,nu);
   for(int j=0 ; j<neave ; j++) outVal(11,4,eave[j]);
   nl();
+}
 
-/*
-  cout << " FissEnergy";
+
+void outFissionNeutronEnergyTable(const int mc, double *pf, FNSpec *fns)
+{
   outVal(labE);
   for(int i=0 ; i<4 ; i ++){
     if(i <= mc) outVal(pf[i]); else{ outVal(11,4,0.0); }
@@ -1168,7 +1328,6 @@ void outFissionNeutronEnergy(const int mc, double e, double nu, double *pf, FNSp
     if(i <= mc) outVal(fns->fc[i].ecms[3]); else{ outVal(11,4,0.0); }
   }
   nl();
-*/
 }
 
 
@@ -1198,6 +1357,18 @@ void outFissionNeutronSpectrum(const int n, double *e, double *s, double t)
       nl();
     }
   }
+
+  double x0 = 0.0, x1 = 0.0, de;
+  for(int k=0 ; k<n-1 ; k++){
+    de = e[k+1] - e[k];
+    x0 += s[k] * de;
+    x1 += s[k] * e[k] * de;
+  }
+  x1 = (x0 > 0.0) ? x1 / x0 : 0.0;
+  nl();
+
+  cout << "#   Average";
+  outVal(x1);
   nl();
   nl();
 }
@@ -1243,6 +1414,7 @@ void outParameter()
     case parmKO  :
     case parmDSDV:
     case parmGDRM1:
+    case parmCOLL:
                     cout << blank << blank; 
                     break;
     case parmOV  :

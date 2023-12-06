@@ -41,9 +41,6 @@ void setupClearParameter(int mc, System *sys, Pdata *pdt, Direct *dir,
   /*** clear DSD parameters */
   cap->init();
 
-  /*** clear GDR parameters */
-  for(int i=0 ; i<MAX_GDR ; i++) cap->gdr[i].clear();
-
   /*** clear fission barriers */
   for(int i=0 ; i<MAX_FISS_CHANCE ; i++) fbr[i].init();
 
@@ -243,6 +240,7 @@ int setupStatModel(int jmax, System *sys, Pdata *pdt)
 /**********************************************************/
 void setupClearCrxArray()
 {
+  /*** clear cross section arrays */
   crx.init();
 
   for(int i=0 ; i<MAX_DIRECT ; i++){
@@ -262,6 +260,9 @@ void setupClearCrxArray()
   }
 
   for(int i=0 ; i<MAX_COMPOUND ; i++) crx.prod[i].init();
+
+  /*** clear gamma-ray production array */
+  gml.init();
 }
 
 

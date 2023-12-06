@@ -36,6 +36,7 @@ const double MDEUTERON  =  2.0141018      ; /* Deuteron Weight [amu]          */
 const double MTRITON    =  3.0160494      ; /* Triton Weight   [amu]          */
 const double MHELIUM3   =  3.0260294      ; /* Helium-3 Weight [amu]          */
 const double MALPHA     =  4.0026032      ; /* Alpha Weight    [amu]          */
+const double MELECTRON  =  5.48579909e-04 ; /* Electron Weight [amu]          */
 
 const double ENEUTRON   =   8.071431      ; /* Neutron Mass Excess  [MeV]     */
 const double EPROTON    =   7.289034      ; /* Proton Mass Excess   [MeV]     */

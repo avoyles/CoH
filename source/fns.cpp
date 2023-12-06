@@ -23,15 +23,15 @@ using namespace std;
 
 static void   fnsCheckParameters            (const int, FChance *);
 static void   fnsEachChanceFissionSpectrum  (Pdata *, FChance *, Nucleus *);
-static void   fnsFissionFragmentZA          (int, int, FChance *);
-static void   fnsChanceFissionZA            (double, FChance *, FChance *);
-static void   fnsFissionEnergy              (double, double, Nucleus *, FChance *);
+static void   fnsFissionFragmentZA          (const int, const int, FChance *);
+static void   fnsChanceFissionZA            (const double, FChance *, FChance *);
+static void   fnsFissionEnergy              (const double, const double, const unsigned int, Nucleus *, FChance *);
 static void   fnsLevelDensityParameter      (Nucleus *, FChance *);
 static void   fnsEnergySharing              (FChance *);
 static void   fnsMaximumTemperature         (FChance *);
 static int    fnsOutgoingEnergyGrid         (const int, double *);
 
-static inline double fnsAverageSn           (int, int, double);
+static inline double fnsAverageSn           (const int, const int, double);
 static inline void   fnsCleanSpecArray      ();
 
 static const int MAX_FNSPEC = 5;
@@ -120,7 +120,7 @@ void fnsFissionNeutronModel(System *sys, Pdata *pdt, double *chi, FNSpec *fns)
     fns->fc[mch].exfiss = fnsAverageSpectrumEnergy(ncl[cid].ntotal,ncl[cid].excitation,ncl[cid].popfis);
 
     /*** TKE, total fission energy, Egamma, and TXE  */
-    fnsFissionEnergy(pn.mass_excess,ep,&ncl[cid],&fns->fc[mch]);
+    fnsFissionEnergy(pn.mass_excess,ep,sys->incident.za.getA(),&ncl[cid],&fns->fc[mch]);
     if(fns->fc[mch].txe < 0.0) break;
 
     /*** main Madland-Nix model calculation */
@@ -158,8 +158,9 @@ void fnsFissionNeutronModel(System *sys, Pdata *pdt, double *chi, FNSpec *fns)
   fnsNormalizeSpectrum(ne,eout,chi);
   double eavrg = fnsAverageSpectrumEnergy(ne,eout,chi);
 
-  if(prn.system)  outFissionNeutronEnergy(mch-1,eavrg,nutot,pf,fns);
-  if(prn.spectra) outFissionNeutronSpectrum(ne,eout,chi,fns->maxwell);
+  if(prn.system)    outFissionNeutronEnergy(mch-1,eavrg,nutot,pf,fns);
+  if(prn.spectra)   outFissionNeutronSpectrum(ne,eout,chi,fns->maxwell);
+  if(prn.fisenergy) outFissionNeutronEnergyTable(mch-1,pf,fns);
 
 #ifdef DEBUG_EXFISS
   fnsExfissCheck(mch, sys->lab_energy, pf, fns);
@@ -225,7 +226,7 @@ void fnsEachChanceFissionSpectrum(Pdata *pn, FChance *fc, Nucleus *n)
 /**********************************************************/
 /*      Representative Fission Fragments                  */
 /**********************************************************/
-void fnsFissionFragmentZA(int zt, int at, FChance *fc)
+void fnsFissionFragmentZA(const int zt, const int at, FChance *fc)
 {
   /*** initial case
        if not given, assume symmetric fission */
@@ -249,7 +250,7 @@ void fnsFissionFragmentZA(int zt, int at, FChance *fc)
 /**********************************************************/
 /*      Fission Fragments at Each Chance Fission          */
 /**********************************************************/
-void fnsChanceFissionZA(double nmass, FChance *fc0, FChance *fc1)
+void fnsChanceFissionZA(const double nmass, FChance *fc0, FChance *fc1)
 {
   /*** if not given,
        each time, subtract a neutron from a fragment whose Sn is smaller */
@@ -275,11 +276,15 @@ void fnsChanceFissionZA(double nmass, FChance *fc0, FChance *fc1)
 /**********************************************************/
 /*      Fission Energy Balance and TXE                    */
 /**********************************************************/
-void fnsFissionEnergy(double nmass, double eavepf, Nucleus *n, FChance *fc)
+void fnsFissionEnergy(const double nmass, const double eavepf, const unsigned int ap, Nucleus *n, FChance *fc)
 {
-  /*** check TKE */
+  /*** separation energy for calculating equivalent excitation energy */
   double sn = mass_excess(n->za.getZ(),n->za.getA()-1) + nmass - mass_excess(n->za.getZ(),n->za.getA());
 
+  /*** for the photon-induced case and no multi-chance case, set Sn = 0 */
+  if(ap == 0) sn = 0.0;
+
+  /*** check TKE */
   if(fc->tke0 == 0.0){
     fc->tke0 = fnsTKESystematics(n->za.getZ(),n->za.getA());
     if(fc->tke1 == 0.0) fc->tke1 = fnsTKEEdepSystematics(n->za.getA());
@@ -459,7 +464,7 @@ int fnsOutgoingEnergyGrid(const int m, double *energy)
 /**********************************************************/
 /*      Average Neutron Separation Energy                 */
 /**********************************************************/
-inline double fnsAverageSn(int z, int a, double mneutron)
+inline double fnsAverageSn(const int z, const int a, double mneutron)
 {
   /*** average Sn, S2n, S3n, and S4n */
   double m0 = mass_excess(z,a  );

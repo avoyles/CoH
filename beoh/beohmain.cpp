@@ -17,11 +17,11 @@ using namespace std;
 #include "terminate.h"
 
 static int  beohReadInputFile (System *, Pdata *, GDR *, Beta *, BData *, FFragData *);
-static void beohDecayMain (System *, Pdata *, GDR *, Beta *, BData *);
+static void beohDecayMain (System *, Pdata *, GDR *, Beta *, BData *, const unsigned long);
 static void beohBetaSetting (System *, Beta *, Beta *, BetaProfile *);
 static void beohStoreBetaPopulation (System *, Beta *, Beta *, BetaProfile *);
 static void beohStoreStatPopulation (BData *);
-static void beohStatCalculation (System *, Pdata *);
+static void beohStatCalculation (System *, Pdata *, const unsigned long);
 static void beohPrintResult (System *, BData *);
 
 
@@ -36,7 +36,7 @@ static double        **tg;
 /**********************************************************/
 /*      Loop Over Input File                              */
 /**********************************************************/
-void beohMainLoop()
+void beohMainLoop(const unsigned long nsim)
 {
   System      sys;                  // system parameters
   BData       bdt;                  // BeoH specific system parameters
@@ -79,7 +79,7 @@ void beohMainLoop()
       }
       /*** beta-decay or statistical decay mode */
       else{
-        beohDecayMain(&sys,pdt,gdr,&gts,&bdt);
+        beohDecayMain(&sys,pdt,gdr,&gts,&bdt,nsim);
       }
     }
   }while(!cin.eof());
@@ -89,7 +89,7 @@ void beohMainLoop()
 /**********************************************************/
 /*      Mail Calculation for Beta and Stat Decay Modes    */
 /**********************************************************/
-void beohDecayMain(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt)
+void beohDecayMain(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt, const unsigned long nsim)
 {
   Beta        ens;    // beta strength distribution from ENSDF
   BetaProfile bpf;    // mixed beta strength distribution
@@ -112,7 +112,7 @@ void beohDecayMain(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt)
     outTitle(buf);
     outSystem(bdt->getMode(),sys);
     outLevelDensity(sys->max_compound,0.0);
-    outGDR(gdr);
+    outGDR(false,sys->max_compound);
     if(fisdat) outFissionBarrier(sys->max_compound);
     outCompound(sys->max_compound,pdt);
   }
@@ -133,11 +133,11 @@ void beohDecayMain(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt)
   }
 
   /*** statistical decay main calculation */
-  beohStatCalculation(sys,pdt);
+  beohStatCalculation(sys,pdt,nsim);
 
   /*** electron and neutrino spectra */
   if(bdt->isBetaCalc()){
-    beohElectronSpectrum(ncl[0].max_energy,bpf.rcont,bpf.rdisc,&ncl[0],crx.spectra[4],crx.spectra[5]);
+    beohElectronSpectrum(ncl[0].max_energy,bpf.rcont,bpf.rdisc,&ncl[0],crx.spectra[MAX_CHANNEL],crx.spectra[MAX_CHANNEL+1]);
   }
 
   /*** output results */
@@ -151,7 +151,7 @@ void beohDecayMain(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt)
 /**********************************************************/
 /*      BeoH for CGM Compatible Mode                      */
 /**********************************************************/
-void beohCGMCompatibleMode(const int targZ, const int targA, const double iniJ, const int iniP, const double energy, const double exwidth, const double spinfact, const double targE, const double beta2)
+void beohCGMCompatibleMode(const int targZ, const int targA, const double iniJ, const int iniP, const double energy, const double exwidth, const double spinfact, const double targE, const double beta2, const unsigned long nsim)
 {
   System sys;
   BData  bdt;
@@ -189,12 +189,12 @@ void beohCGMCompatibleMode(const int targZ, const int targA, const double iniJ, 
   if(prn.system){
     outSystem(bdt.getMode(),&sys);
     outLevelDensity(sys.max_compound,0.0);
-    outGDR(gdr);
+    outGDR(false,sys.max_compound);
     outCompound(sys.max_compound,pdt);
   }
 
   beohStoreStatPopulation(&bdt);
-  beohStatCalculation(&sys,pdt);
+  beohStatCalculation(&sys,pdt,nsim);
   beohPrintResult(&sys,&bdt);
 
   beohDeleteAllocated();
@@ -215,7 +215,7 @@ int beohReadInputFile(System *sys, Pdata *pdt, GDR *gdr, Beta *gts, BData *bdt, 
 
     /*** DATA section */
     if(sec == DATA){
-      readSystem(buf,sys,pdt,bdt);
+      readSystem(buf,sys,pdt,fdt,bdt);
     }
     /*** BETA section */
     else if(sec == BETA){
@@ -299,14 +299,21 @@ void beohStoreStatPopulation(BData *bdt)
 /**********************************************************/
 /*      Main Statistical Decay Calculation                */
 /**********************************************************/
-void beohStatCalculation(System *sys, Pdata *pdt)
+void beohStatCalculation(System *sys, Pdata *pdt, const unsigned long nsim)
 {
   crx.specclear();
   spc.memclear();
+  gml.init();
 
-  /*** Hauser-Feshbach calculation */
-  if(ncl[0].ncont > 0) beohspectra(sys,pdt,tc,td,tg,&spc);
-  else                 specGammaCascade(spc.cn[0],&ncl[0]);
+  if(nsim == 0L){
+    /*** regular Hauser-Feshbach calculation */
+    if(ncl[0].ncont > 0) beohspectra(sys,pdt,tc,td,tg,&spc,&gml);
+    else                 specGammaCascade(spc.cn[0],&ncl[0]);
+  }
+  else{
+    /*** Monte Carlo Hauser-Feshbach calculation */
+    beohspectraMC(pdt,tc,td,tg,&spc,nsim);
+  }
 }
 
 
@@ -316,8 +323,8 @@ void beohStatCalculation(System *sys, Pdata *pdt)
 void beohPrintResult(System *sys, BData *bdt)
 {
   if(prn.spectra){
-    outSpectrum(bdt->isBetaCalc(),ncl[0].de,crx.spectra);
-    outSpectrumSum(bdt->isBetaCalc(),ncl[0].de,crx.spectra);
+    outSpectrum(bdt->isBetaCalc(),ncl[0].de,crx.spectra,&ncl[0]);
+    outSpectrumSum(bdt->isBetaCalc(),ncl[0].de,crx.spectra,&ncl[0]);
 
     if(bdt->ekmean > 0.0){
       double *spl = new double [MAX_ENERGY_BIN];
@@ -335,7 +342,7 @@ void beohPrintResult(System *sys, BData *bdt)
   }
 
   if(prn.gcascade){
-    for(int i=0 ; i<sys->max_compound ; i++) outGammaCascade(&ncl[i]);
+    for(int i=0 ; i<sys->max_compound ; i++) outGammaCascade(1.0,&ncl[i]);
   }
 }
 
@@ -427,7 +434,9 @@ void beohParameterSetting(System *sys, GDR *gdr, bool meta)
   }
 
   /*** GDR parameters for the first CN */
-  statSetupGdrParameter(&ncl[0],ncl[0].ldp.a,gdr,sys->beta2);
+  statSetupGdrParameter(&ncl[0],gdr,sys->beta2);
+  /*** all others, we always use systematics, but assume the same deformation */
+  for(int i=1 ; i<sys->max_compound ; i++) statSetupGdrSystematics(&ncl[i],sys->beta2);
 
   /*** fission level density */
   for(int i=0 ; i<sys->max_compound ; i++){
@@ -500,8 +509,8 @@ void beohAllocateMemory()
     }
 
     /*** allocate photon transmission array */
-    tg = new double * [MAX_MULTIPOL];
-    for(int i=0 ; i<MAX_MULTIPOL ; i++) tg[i] = new double [MAX_ENERGY_BIN];
+    tg = new double * [MAX_ENERGY_BIN];
+    for(int k=0 ; k<MAX_ENERGY_BIN ; k++) tg[k] = new double [MAX_MULTIPOL];
 
     /*** allocate energy spectra arrays */
     spc.memalloc(MAX_CHANNEL,MAX_ENERGY_BIN,MAX_LEVELS);
@@ -527,7 +536,7 @@ void beohDeleteAllocated()
   delete [] tc;
   delete [] td;
 
-  for(int i=0 ; i<MAX_MULTIPOL ; i++) delete [] tg[i];
+  for(int k=0 ; k<MAX_ENERGY_BIN ; k++) delete [] tg[k];
   delete [] tg;
 
   spc.memfree();

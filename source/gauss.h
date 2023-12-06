@@ -1,8 +1,4 @@
-/*
-   gauss.h : 
-        coefficients of Gauss_Legendre integral
- */
-
+// coefficients of Gauss_Legendre integral
 
 #ifdef GAUSS_LEGENDRE16
 static const int MAX_GAUSSLEG = 8;

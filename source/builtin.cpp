@@ -17,21 +17,21 @@ using namespace std;
 static int          findname    (string *, char *, int);
 static unsigned int add_library (int, double, int, int, int, int, Optical *);
 
-static const int N_OMPLIB = 22;
+static const int N_OMPLIB = 23;
 static string lib_name[N_OMPLIB] =
   {"Wilmore", "Becchetti", "Rapaport", "Walter", "CH89", 
    "Koning", "Soukhovitskii", "Kunieda",
    "Perey", "Schwandt", "Madland",
-   "Lemos", "Nolte", "Avrigeanu", "Avrigeanu2009", "TALYS-A",
+   "Lemos", "Nolte", "Avrigeanu", "Avrigeanu2009", "Avrigeanu2014", "TALYS-A",
    "Bojowald", "An", "Han",
    "bound", "test", "spline"};
 
-static const int ADD_CUSTOM_OMP = 11;
+static const int ADD_CUSTOM_OMP = 17;
 static string add_name[ADD_CUSTOM_OMP] =
   {"scratch",
    "SmithA120","SmithA136","SmithA415",
    "Flap22","Young-Am","Young-Pu","Young-Re","modSoukhovitskii","Soukhovitskii2005",
-   "Dave1p"};
+   "Dave1p","WLH1","WLH2","WLH3","WLH4","WLH5"};
 
 
 /***********************************************************/
@@ -101,13 +101,14 @@ unsigned int omp_library(int id, int zt, int at, int zi, int ai,
   case 13: potfm = OMPNolte(               at,zt,ai,zi,omp); break;
   case 14: potfm = OMPAvrigeanu(         e,at,zt,ai,zi,omp); break;
   case 15: potfm = OMPAvrigeanu2009(     e,at,zt,ai,zi,omp); break;
-  case 16: potfm = OMPTALYS_alpha(       e,at,zt,ai,zi,omp); break;
-  case 17: potfm = OMPBojowald(          e,at,zt,ai,zi,omp); break;
-  case 18: potfm = OMPAnHaixia(            at,zt,ai,zi,omp); break;
-  case 19: potfm = OMPHanYinlu(            at,zt,ai,zi,omp); break;
-  case 20: potfm = OMPBoundState(                   zi,omp); break;
-  case 21: potfm = OMPtest(                         zi,omp); break;
-  case 22: potfm = OMPspline(            e,at,zt,ai,zi,omp); break;
+  case 16: potfm = OMPAvrigeanu2014(     e,at,zt,ai,zi,omp); break;
+  case 17: potfm = OMPTALYS_alpha(       e,at,zt,ai,zi,omp); break;
+  case 18: potfm = OMPBojowald(          e,at,zt,ai,zi,omp); break;
+  case 19: potfm = OMPAnHaixia(            at,zt,ai,zi,omp); break;
+  case 20: potfm = OMPHanYinlu(            at,zt,ai,zi,omp); break;
+  case 21: potfm = OMPBoundState(                   zi,omp); break;
+  case 22: potfm = OMPtest(                         zi,omp); break;
+  case 23: potfm = OMPspline(            e,at,zt,ai,zi,omp); break;
   default: potfm = 0                                       ; break;
   }
 
@@ -132,6 +133,11 @@ unsigned int add_library(int id, double e, int zt, int at, int zi, int ai, Optic
   case  9: potfm = OMPModSoukhovitskii(  e,at,zt,   zi,omp); break;
   case 10: potfm = OMPSoukhovitskii2005( e,at,zt,   zi,omp); break;
   case 11: potfm = OMPDave1p(              at,zt,      omp); break;
+//  case 12: potfm = OMPWLH1(              e,at,zt,ai,zi,omp); break;
+//  case 13: potfm = OMPWLH2(              e,at,zt,ai,zi,omp); break;
+//  case 14: potfm = OMPWLH3(              e,at,zt,ai,zi,omp); break;
+//  case 15: potfm = OMPWLH4(              e,at,zt,ai,zi,omp); break;
+//  case 16: potfm = OMPWLH5(              e,at,zt,ai,zi,omp); break;
   default: potfm = 0; break;
   }
 

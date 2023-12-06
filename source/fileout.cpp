@@ -16,16 +16,13 @@ using namespace std;
 #include "nucleus.h"
 #include "fileout.h"
 #include "global.h"
+#include "metastable.h"
 #include "terminate.h"
 
-#undef LONGOUTPUT
-
-static const int N_OUTPUT_CROSSSEC =  6;
-static const int N_OUTPUT_SIGPART  = 24;
-static const int N_OUTPUT_FISSION  =  5;
 static const int N_PART_KIND       =  7;
 static const int N_OUTPUT_LEVELS   = 42;
 
+#undef LONGOUTPUT
 #ifdef LONGOUTPUT
 static const int COLUMN_WIDTH      = 21;
 static const int DECIMAL_WIDTH     = 14;
@@ -34,30 +31,17 @@ static const int COLUMN_WIDTH      = 13;
 static const int DECIMAL_WIDTH     =  6;
 #endif
 
-static void    fioWriteCrossSection1           (const bool, const string, int, double);
-static void    fioWriteCrossSection2           (const bool, const string, int, double);
-static void    fioWriteCrossSection3           (const bool, const string, int, double);
-static void    fioWriteLevelExcite             (const bool, const string, double *, double, int, Nucleus *);
-static void    fioWriteAngularDistribution     (const string, double *, double);
-static void    fioWriteLegendreCoefficient     (const string, double *, double, int);
+static void    fioWriteCrossSectionMain        (const bool, const string, const int, const double);
+static void    fioWriteCrossSectionParticle    (const bool, const string, const int, const double);
+static void    fioWriteCrossSectionIsomer      (const bool, const string, const int, const double);
+static void    fioWriteCrossSectionFission     (const bool, const string, const int, const double);
+static void    fioWriteLevelExcite             (const bool, const string, double *, const double, const int, Nucleus *);
+static void    fioWriteAngularDistribution     (const string, double *, const double);
+static void    fioWriteLegendreCoefficient     (const string, double *, const double, const int);
 
 static inline void  fioSetLevelEnergy          (double *, Nucleus *);
 static inline bool  fioCheckExist              (string);
 
-static string rname1[N_OUTPUT_CROSSSEC] = {
-  " Total       "," Elastic     "," Non-elastic "," Capture     "," Inelastic   "," Fission     "};
-
-static string rname2[N_OUTPUT_SIGPART ] = {
-  " (x,n)       "," (x,p)       "," (x,A)       "," (x,d)       "," (x,t)       "," (x,h)       ",
-  " (x,2n)      "," (x,np)      "," (x,nA)      "," (x,nd)      "," (x,nt)      "," (x,nh)      ",
-  " (x,2p)      "," (x,pA)      "," (x,pd)      "," (x,2A)      "," (x,Ad)      "
-  " (x,3n)      "," (x,2np)     "," (x,2nA)     "," (x,npA)     "," (x,n2p)     ",
-  " (x,4n)      "," (x,5n)      "};
-
-static string rname3[N_OUTPUT_FISSION ] = {
-  " (x,0nf)     "," (x,1nf)     "," (x,2nf)     "," (x,3nf)     "," (x,4nf)     "};
-
-  
 
 /*** lower limit of output values, enforce zero */
 static const double eps = 1.0e-99;
@@ -72,36 +56,44 @@ void cohFileOut(int nc, int tid, double elab)
 {
   string fname;
   ostringstream fn;
-  bool fexist = false;
   double elev[N_OUTPUT_LEVELS];
 
-  fioSetLevelEnergy(elev,&ncl[tid]);
-
+  /*** print out angular distributions for elastic and inelastic scattering */
   if(prn.angdist){
+
+    fioSetLevelEnergy(elev,&ncl[tid]);
+
     fn.str("");
     fn << filename_angular_distribution << "." << file_extension;
     fioWriteAngularDistribution(fn.str(), elev, elab);
   }
+
+  /*** print out cross sections */
   else{
-    /*** check if cross section output files exist, if not,  */
+    /*** main cross sections, total, elastic, capture, inelasitc, fission  */
     fn.str("");
     fn << filename_cross_section << "." << file_extension;
-    fexist = fioCheckExist(fn.str());
-    fioWriteCrossSection1(fexist, fn.str(), nc, elab);
+    fioWriteCrossSectionMain(fioCheckExist(fn.str()), fn.str(), nc, elab);
 
+    /*** all reaction cross sections */
     fn.str("");
     fn << filename_particle_production << "." << file_extension;
-    fexist = fioCheckExist(fn.str());
-    fioWriteCrossSection2(fexist, fn.str(), nc, elab);
+    fioWriteCrossSectionParticle(fioCheckExist(fn.str()), fn.str(), nc, elab);
 
+    /*** isomeric ratios */
+    fn.str("");
+    fn << filename_isomeric_ratio << "." << file_extension;
+    fioWriteCrossSectionIsomer(fioCheckExist(fn.str()), fn.str(), nc, elab);
+
+    /*** multi-chance fission cross sections */
     if(ctl.fission){
       fn.str("");
       fn << filename_fission << "." << file_extension;
-      fexist = fioCheckExist(fn.str());
-      fioWriteCrossSection3(fexist, fn.str(), nc, elab);
+      fioWriteCrossSectionFission(fioCheckExist(fn.str()), fn.str(), nc, elab);
     }
   }
 
+  /*** for binary reactions, scattering to discrete levels */
   for(int id=1 ; id<MAX_CHANNEL ; id++){
     if(!ncl[0].cdt[id].status) continue;
 
@@ -117,8 +109,7 @@ void cohFileOut(int nc, int tid, double elab)
     }
     else{
       fn << filename_level_excite << setw(1) << id << "." << file_extension;
-      fexist = fioCheckExist(fn.str());
-      fioWriteLevelExcite(fexist, fn.str(), elev, elab, id, &ncl[p]);
+      fioWriteLevelExcite(fioCheckExist(fn.str()), fn.str(), elev, elab, id, &ncl[p]);
     }
   }
 }
@@ -158,24 +149,28 @@ bool fioCheckExist(string fname)
 /**********************************************************/
 /*     Output Selected Cross Sections on File             */
 /**********************************************************/
-void fioWriteCrossSection1(const bool fexist, const string fname, int nc, double e)
+void fioWriteCrossSectionMain(const bool fexist, const string fname, const int nc, const double e)
 {
+  const int N_OUTPUT_CROSSSEC = 6;
+  static const string rname[N_OUTPUT_CROSSSEC] = {
+  " Total       "," Elastic     "," CNFormation "," Capture     "," Inelastic   "," Fission     "};
+
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);
   if(!fp){
     message << "data file " << fname << " output error";
-    cohTerminateCode("fioWriteCrossSection1");
+    cohTerminateCode("fioWriteCrossSectionMain");
   }
 
   char   s[N_PART_KIND+1] = "0000000";
   string str;
-  double c1[N_OUTPUT_CROSSSEC];
+  double cx[N_OUTPUT_CROSSSEC];
 
-  for(int i=0 ; i<N_OUTPUT_CROSSSEC ; i++) c1[i]=0.0;
+  for(int i=0 ; i<N_OUTPUT_CROSSSEC ; i++) cx[i]=0.0;
 
-  c1[0] = crx.total;                    // total cross section
-  c1[1] = crx.elastic + crx.compound;   // elastic scattering cross section
-  c1[2] = crx.reaction;                 // non-elastic cross section
+  cx[0] = crx.total;                    // total cross section
+  cx[1] = crx.elastic + crx.compound;   // elastic scattering cross section
+  cx[2] = crx.reaction;                 // compond formation cross section
 
   /*** capture, inelastic, and fission */
   for(int i=0 ; i<nc ; i++) {
@@ -184,26 +179,28 @@ void fioWriteCrossSection1(const bool fexist, const string fname, int nc, double
     str = (string)s;
 
     if(     str=="0000000"){
-      c1[3] = crx.prod[i].xsec;
+      cx[3] = crx.prod[i].xsec;
     }
     else if(str=="0100000"){
       double z =crx.prod[i].xsec - crx.compound;
-      c1[4] = (z < 1.0e-10) ? 0.0 : z;
+      cx[4] = (z < 1.0e-10) ? 0.0 : z;
     }
-    c1[5] += crx.prod[i].fiss;
+    cx[5] += crx.prod[i].fiss;
   }
 
+  /*** print header if file not exist */
   if(!fexist){
-    fp << "#" << setw(COLUMN_WIDTH-1) << "            ";
-    for(int i=0 ; i<N_OUTPUT_CROSSSEC ; i++) fp << setw(COLUMN_WIDTH) << rname1[i];
+    fp << "#" << setw(COLUMN_WIDTH-1) << " Reaction    ";
+    for(int i=0 ; i<N_OUTPUT_CROSSSEC ; i++) fp << setw(COLUMN_WIDTH) << rname[i];
     fp << endl;
   }
 
+  /*** print cross sections */
   fp << setprecision(DECIMAL_WIDTH);
   fp << setiosflags(ios::scientific);
   fp << setw(COLUMN_WIDTH) << e;
   for(int i=0 ; i<N_OUTPUT_CROSSSEC ; i++){
-    fp << setw(COLUMN_WIDTH) << ( (c1[i] < eps) ? 0.0 : c1[i] );
+    fp << setw(COLUMN_WIDTH) << ( (cx[i] < eps) ? 0.0 : cx[i] );
   }
   fp << endl;
   fp.close();
@@ -213,67 +210,76 @@ void fioWriteCrossSection1(const bool fexist, const string fname, int nc, double
 /**********************************************************/
 /*     Output Particle Production Cross Sections          */
 /**********************************************************/
-void fioWriteCrossSection2(const bool fexist, const string fname, int nc, double e)
+void fioWriteCrossSectionParticle(const bool fexist, const string fname, const int nc, const double e)
 {
+  const int N_OUTPUT_SIGPART = 24;
+  static const string rname[N_OUTPUT_SIGPART ] = {
+  " (x,n)       "," (x,p)       "," (x,A)       "," (x,d)       "," (x,t)       "," (x,h)       ",
+  " (x,2n)      "," (x,np)      "," (x,nA)      "," (x,nd)      "," (x,nt)      "," (x,nh)      ",
+  " (x,2p)      "," (x,pA)      "," (x,pd)      "," (x,2A)      "," (x,Ad)      "
+  " (x,3n)      "," (x,2np)     "," (x,2nA)     "," (x,npA)     "," (x,n2p)     ",
+  " (x,4n)      "," (x,5n)      "};
+
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);
   if(!fp){
     message << "data file " << fname << " output error";
-    cohTerminateCode("fioWriteCrossSection2");
+    cohTerminateCode("fioWriteCrossSectionParticle");
   }
 
   char   s[N_PART_KIND+1] = "0000000";
   string str;
-  double c2[N_OUTPUT_SIGPART];
+  double cx[N_OUTPUT_SIGPART];
 
-  for(int i=0 ; i<N_OUTPUT_SIGPART ; i++) c2[i]=0.0;
+  for(int i=0 ; i<N_OUTPUT_SIGPART ; i++) cx[i] = 0.0;
 
   for(int i=0 ; i<nc ; i++) {
-    for(int j=0 ; j<min(N_PART_KIND,MAX_CHANNEL) ; j++)
-      sprintf(&s[j],"%1x",(int)crx.prod[i].par[j]);
+    for(int j=0 ; j<min(N_PART_KIND,MAX_CHANNEL) ; j++) sprintf(&s[j],"%1x",(int)crx.prod[i].par[j]);
     str = (string)s;
 
-    if(     str=="0100000"){ c2[ 0] = crx.prod[i].xsec; }  // (x,n)
-    else if(str=="0010000"){ c2[ 1] = crx.prod[i].xsec; }  // (x,p)
-    else if(str=="0001000"){ c2[ 2] = crx.prod[i].xsec; }  // (x,A)
-    else if(str=="0000100"){ c2[ 3] = crx.prod[i].xsec; }  // (x,d)
-    else if(str=="0000010"){ c2[ 4] = crx.prod[i].xsec; }  // (x,t)
-    else if(str=="0000001"){ c2[ 5] = crx.prod[i].xsec; }  // (x,h)
+    if(     str == "0100000"){ cx[ 0] = crx.prod[i].xsec; }  // (x,n)
+    else if(str == "0010000"){ cx[ 1] = crx.prod[i].xsec; }  // (x,p)
+    else if(str == "0001000"){ cx[ 2] = crx.prod[i].xsec; }  // (x,A)
+    else if(str == "0000100"){ cx[ 3] = crx.prod[i].xsec; }  // (x,d)
+    else if(str == "0000010"){ cx[ 4] = crx.prod[i].xsec; }  // (x,t)
+    else if(str == "0000001"){ cx[ 5] = crx.prod[i].xsec; }  // (x,h)
 
-    else if(str=="0200000"){ c2[ 6] = crx.prod[i].xsec; }  // (x,2n)
-    else if(str=="0110000"){ c2[ 7] = crx.prod[i].xsec; }  // (x,np)
-    else if(str=="0101000"){ c2[ 8] = crx.prod[i].xsec; }  // (x,nA)
-    else if(str=="0100100"){ c2[ 9] = crx.prod[i].xsec; }  // (x,nd)
-    else if(str=="0100010"){ c2[10] = crx.prod[i].xsec; }  // (x,nt)
-    else if(str=="0100001"){ c2[11] = crx.prod[i].xsec; }  // (x,nh)
+    else if(str == "0200000"){ cx[ 6] = crx.prod[i].xsec; }  // (x,2n)
+    else if(str == "0110000"){ cx[ 7] = crx.prod[i].xsec; }  // (x,np)
+    else if(str == "0101000"){ cx[ 8] = crx.prod[i].xsec; }  // (x,nA)
+    else if(str == "0100100"){ cx[ 9] = crx.prod[i].xsec; }  // (x,nd)
+    else if(str == "0100010"){ cx[10] = crx.prod[i].xsec; }  // (x,nt)
+    else if(str == "0100001"){ cx[11] = crx.prod[i].xsec; }  // (x,nh)
 
-    else if(str=="0020000"){ c2[12] = crx.prod[i].xsec; }  // (x,2p)
-    else if(str=="0011000"){ c2[13] = crx.prod[i].xsec; }  // (x,pA)
-    else if(str=="0010100"){ c2[14] = crx.prod[i].xsec; }  // (x,pd)
-    else if(str=="0002000"){ c2[15] = crx.prod[i].xsec; }  // (x,2A)
-    else if(str=="0001100"){ c2[16] = crx.prod[i].xsec; }  // (x,Ad)
+    else if(str == "0020000"){ cx[12] = crx.prod[i].xsec; }  // (x,2p)
+    else if(str == "0011000"){ cx[13] = crx.prod[i].xsec; }  // (x,pA)
+    else if(str == "0010100"){ cx[14] = crx.prod[i].xsec; }  // (x,pd)
+    else if(str == "0002000"){ cx[15] = crx.prod[i].xsec; }  // (x,2A)
+    else if(str == "0001100"){ cx[16] = crx.prod[i].xsec; }  // (x,Ad)
 
-    else if(str=="0300000"){ c2[17] = crx.prod[i].xsec; }  // (x,3n)
-    else if(str=="0210000"){ c2[18] = crx.prod[i].xsec; }  // (x,2np)
-    else if(str=="0201000"){ c2[19] = crx.prod[i].xsec; }  // (x,2nA)
-    else if(str=="0111000"){ c2[20] = crx.prod[i].xsec; }  // (x,npA)
-    else if(str=="0120000"){ c2[21] = crx.prod[i].xsec; }  // (x,n2p)
+    else if(str == "0300000"){ cx[17] = crx.prod[i].xsec; }  // (x,3n)
+    else if(str == "0210000"){ cx[18] = crx.prod[i].xsec; }  // (x,2np)
+    else if(str == "0201000"){ cx[19] = crx.prod[i].xsec; }  // (x,2nA)
+    else if(str == "0111000"){ cx[20] = crx.prod[i].xsec; }  // (x,npA)
+    else if(str == "0120000"){ cx[21] = crx.prod[i].xsec; }  // (x,n2p)
 
-    else if(str=="0400000"){ c2[22] = crx.prod[i].xsec; }  // (x,4n)
-    else if(str=="0500000"){ c2[23] = crx.prod[i].xsec; }  // (x,5n)
+    else if(str == "0400000"){ cx[22] = crx.prod[i].xsec; }  // (x,4n)
+    else if(str == "0500000"){ cx[23] = crx.prod[i].xsec; }  // (x,5n)
   }
 
+  /*** print header if file not exist */
   if(!fexist){
-    fp << "#" << setw(COLUMN_WIDTH-1) << "            ";
-    for(int i=0 ; i<N_OUTPUT_SIGPART ; i++) fp << setw(COLUMN_WIDTH) << rname2[i];
+    fp << "#" << setw(COLUMN_WIDTH-1) << " Reaction   ";
+    for(int i=0 ; i<N_OUTPUT_SIGPART ; i++) fp << setw(COLUMN_WIDTH) << rname[i];
     fp << endl;
   }
 
+  /*** print cross sections */
   fp << setprecision(DECIMAL_WIDTH);
   fp << setiosflags(ios::scientific);
   fp << setw(COLUMN_WIDTH) << e;
   for(int i=0 ; i<N_OUTPUT_SIGPART ; i++){
-    fp << setw(COLUMN_WIDTH) << ( (c2[i] < eps) ? 0.0 : c2[i] );
+    fp << setw(COLUMN_WIDTH) << ( (cx[i] < eps) ? 0.0 : cx[i] );
   }
   fp << endl;
   fp.close();
@@ -281,36 +287,158 @@ void fioWriteCrossSection2(const bool fexist, const string fname, int nc, double
 
 
 /**********************************************************/
-/*     Output Fission Cross Sections on File              */
+/*     Output Isomeric State Production Cross Sections    */
 /**********************************************************/
-void fioWriteCrossSection3(const bool fexist, const string fname, int nc, double e)
+void fioWriteCrossSectionIsomer(const bool fexist, const string fname, const int nc, const double e)
 {
+  const int metamax = 2; // number of isomeric states to be printed
+  const int N_OUTPUT_ISOMER = 13;
+  static const string name[N_OUTPUT_ISOMER] = {
+      "0000000", "0100000", "0010000", "0001000", "0000100", "0000010", "0000001",
+      "0200000", "0110000", "0101000", "0100100", "0100010", "0100001"};
+
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);
   if(!fp){
     message << "data file " << fname << " output error";
-    cohTerminateCode("fioWriteCrossSection");
+    cohTerminateCode("fioWriteCrossSectionIsomer");
   }
 
-  double c3[N_OUTPUT_FISSION];
-  
-  for(int i=0 ; i<N_OUTPUT_FISSION ; i++) c3[i]=0.0;
-  for(int i=0 ; i<nc ; i++){
-    if(i >= N_OUTPUT_FISSION) break;
-    c3[i] = crx.prod[i].fiss;
+  char   s[N_PART_KIND+1] = "0000000";
+  string str;
+  int    meta[N_OUTPUT_ISOMER];
+
+  double **cm = new double * [N_OUTPUT_ISOMER];
+  double **em = new double * [N_OUTPUT_ISOMER];
+  double **tm = new double * [N_OUTPUT_ISOMER];
+  for(int m=0 ; m<N_OUTPUT_ISOMER ; m++){
+    cm[m] = new double [metamax];
+    em[m] = new double [metamax];
+    tm[m] = new double [metamax];
+    meta[m] = 0;
   }
 
+  /*** for each residual, see the reaction type */
+  for(int i=0 ; i<nc ; i++) {
+    for(int j=0 ; j<min(N_PART_KIND,MAX_CHANNEL) ; j++) sprintf(&s[j],"%1x",(int)crx.prod[i].par[j]);
+    str = (string)s;
+
+    /*** check if this reaction will be printed (listed in name[]) */
+    int m = -1;
+    for(int j=0 ; j<N_OUTPUT_ISOMER ; j++){
+       if(str == name[j]){ m = j; break; }
+    }
+    if(m < 0) continue;
+
+    /*** extract isomeric state production ratios */
+    for(int k=1 ; k<=ncl[i].ndisc ; k++){
+      if( (ncl[i].lev[k].halflife > thalfmin) && (meta[m] < metamax) ){
+        /*** excitation energy of the state */
+        em[m][meta[m]] = ncl[i].lev[k].energy;
+
+        /*** half-life of the state */
+        tm[m][meta[m]] = ncl[i].lev[k].halflife;
+
+        /*** production cross section ratio to g.s. */
+        cm[m][meta[m]] = (ncl[i].lpop[0] > 0.0) ? ncl[i].lpop[k] / ncl[i].lpop[0] : 0.0;
+
+        /* increment meta-stable state counter */
+        meta[m]++;
+      }
+    }
+  }
+
+  /*** print header if file not exist */
   if(!fexist){
-    fp << "#" << setw(COLUMN_WIDTH-1) << "            ";
-    for(int i=0 ; i<N_OUTPUT_FISSION ; i++) fp << setw(COLUMN_WIDTH) << rname3[i];
+    fp << "#" << setw(COLUMN_WIDTH-1) << " PartEmit   ";
+    for(int i=0 ; i<N_OUTPUT_ISOMER ; i++){
+      for(int m=0 ; m<metamax ; m++){
+        fp << setw(COLUMN_WIDTH-2) << name[i] << '-' << setw(1) << m+1;
+      }
+    }
+    fp << endl;
+
+    fp << setprecision(DECIMAL_WIDTH);
+    fp << setiosflags(ios::scientific);
+    fp << "#" << setw(COLUMN_WIDTH-1) << " Excitation ";
+    for(int i=0 ; i<N_OUTPUT_ISOMER ; i++){
+      for(int m=0 ; m<metamax ; m++){
+        fp << setw(COLUMN_WIDTH) << em[i][m];
+      }
+    }
+    fp << endl;
+
+    fp << setprecision(DECIMAL_WIDTH);
+    fp << setiosflags(ios::scientific);
+    fp << "#" << setw(COLUMN_WIDTH-1) << " HalfLife   ";
+    for(int i=0 ; i<N_OUTPUT_ISOMER ; i++){
+      for(int m=0 ; m<metamax ; m++){
+        fp << setw(COLUMN_WIDTH) << tm[i][m];
+      }
+    }
     fp << endl;
   }
 
+  /*** print cross sections */
+  fp << setprecision(DECIMAL_WIDTH);
+  fp << setiosflags(ios::scientific);
+  fp << setw(COLUMN_WIDTH) << e;
+  for(int i=0 ; i<N_OUTPUT_ISOMER ; i++){
+    for(int m=0 ; m<metamax ; m++){
+      fp << setw(COLUMN_WIDTH) << ( (cm[i][m] < eps) ? 0.0 : cm[i][m] );
+    }
+  }
+  fp << endl;
+  fp.close();
+
+  for(int i=0 ; i<N_OUTPUT_ISOMER ; i++){
+    delete [] cm[i];
+    delete [] em[i];
+    delete [] tm[i];
+  }
+  delete [] cm;
+  delete [] em;
+  delete [] tm;
+}
+
+
+/**********************************************************/
+/*     Output Fission Cross Sections on File              */
+/**********************************************************/
+void fioWriteCrossSectionFission(const bool fexist, const string fname, const int nc, const double e)
+{
+  const int N_OUTPUT_FISSION = 5;
+  static const string rname[N_OUTPUT_FISSION] = {
+  " (x,0nf)     "," (x,1nf)     "," (x,2nf)     "," (x,3nf)     "," (x,4nf)     "};
+
+  ofstream fp;
+  fp.open(fname.c_str(),ios::out | ios::app);
+  if(!fp){
+    message << "data file " << fname << " output error";
+    cohTerminateCode("fioWriteCrossSectionFission");
+  }
+
+  double cx[N_OUTPUT_FISSION];
+  
+  for(int i=0 ; i<N_OUTPUT_FISSION ; i++) cx[i] = 0.0;
+  for(int i=0 ; i<nc ; i++){
+    if(i >= N_OUTPUT_FISSION) break;
+    cx[i] = crx.prod[i].fiss;
+  }
+
+  /*** print header if file not exist */
+  if(!fexist){
+    fp << "#" << setw(COLUMN_WIDTH-1) << " Fission    ";
+    for(int i=0 ; i<N_OUTPUT_FISSION ; i++) fp << setw(COLUMN_WIDTH) << rname[i];
+    fp << endl;
+  }
+
+  /*** print cross sections */
   fp << setprecision(DECIMAL_WIDTH);
   fp << setiosflags(ios::scientific);
   fp << setw(COLUMN_WIDTH) << e;
   for(int i=0 ; i<N_OUTPUT_FISSION ; i++){
-    fp << setw(COLUMN_WIDTH) << ( (c3[i] < eps) ? 0.0 : c3[i] );
+    fp << setw(COLUMN_WIDTH) << ( (cx[i] < eps) ? 0.0 : cx[i] );
   }
   fp << endl;
   fp.close();
@@ -320,7 +448,7 @@ void fioWriteCrossSection3(const bool fexist, const string fname, int nc, double
 /**********************************************************/
 /*     Output Level Excitation Cross Sections on File     */
 /**********************************************************/
-void fioWriteLevelExcite(const bool fexist, const string fname, double *y, double e, int id, Nucleus *n)
+void fioWriteLevelExcite(const bool fexist, const string fname, double *y, const double e, const int id, Nucleus *n)
 {
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);
@@ -369,7 +497,7 @@ void fioWriteLevelExcite(const bool fexist, const string fname, double *y, doubl
 /**********************************************************/
 /*     Output Scattering Angular Distributions on File    */
 /**********************************************************/
-void fioWriteAngularDistribution(string fname, double *y, double e)
+void fioWriteAngularDistribution(string fname, double *y, const double e)
 {
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);
@@ -400,7 +528,7 @@ void fioWriteAngularDistribution(string fname, double *y, double e)
 /**********************************************************/
 /*     Output Legendre Coefficients on File               */
 /**********************************************************/
-void fioWriteLegendreCoefficient(string fname, double *y, double e, int id)
+void fioWriteLegendreCoefficient(string fname, double *y, const double e, const int id)
 {
   ofstream fp;
   fp.open(fname.c_str(),ios::out | ios::app);

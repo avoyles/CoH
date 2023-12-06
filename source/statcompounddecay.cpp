@@ -41,12 +41,23 @@ void    specCompoundDecay(const int c0, const int k0, Transmission **tc, Transmi
   for(int id=1 ; id<MAX_CHANNEL ; id++){
     tstat[id] = ncl[c0].cdt[id].status;
     if(tstat[id] && (ncl[c0].excitation[k0] < ncl[c0].cdt[id].binding_energy)){
-      tstat[id]=false;
+      tstat[id] = false;
     }
   }
 
-  /*** Loop over CN J and Pariry */
   double sigreac = 0.0;
+
+  /** For photo-induced reaction, spc.dp still contains PE at the top bin, add it to sigreac */
+  if((c0 == 0) && (k0 == 0)){
+    for(int id=0 ; id<MAX_CHANNEL ; id++){
+      if(!tstat[id]) continue;
+      Nucleus *n1 = &ncl[ncl[c0].cdt[id].next];
+      for(int k=0 ; k<n1->ntotal ; k++) sigreac += spc->dp[id][k];
+    }
+    sigreac *= ncl[c0].de;
+  }
+
+  /*** Loop over CN J and Pariry */
   for(int j0=i0 ; j0<=ncl[c0].jmax*2+i0 ; j0+=2){
     int jdx = (j0-i0)/2;
     for(int p0=-1 ; p0<=1 ; p0+=2){
@@ -177,7 +188,7 @@ void    specLostPopFraction(const int c0, const int k0, double sigreac, bool *ts
        sigreac :
           if at the top, total reaction cross section = sgimaR + sum sigmaDI
           else population at k0 in the parent CN
-       sigresi : popuation transfered to residual nuclei
+       sigresi : popuation transferred to residual nuclei
        sigcn - sigres = partial fission cross section
 
        Note that this procedure is not so exact at low energies, 

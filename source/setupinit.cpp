@@ -146,8 +146,7 @@ int setupChain(const int pmax, const double ex, ZAnumber *cZA, Pdata *pdt)
         mass = mass_excess(za.getZ(),za.getA(),&checkmass);
         sepa = mass + pdt[j].mass_excess - ncl[i].mass_excess;
         emax = ncl[i].max_energy - sepa;
-
-        if(checkmass && emax >0.0 && gen[i] < pmax){
+        if(checkmass && (emax > 0.0) && (gen[i] < pmax)){
           cohAllocateNucleus();
           ncl[n].za.setZA(za.getZ(),za.getA());
           ncl[n].max_energy  = emax;
@@ -186,7 +185,6 @@ int setupChain(const int pmax, const double ex, ZAnumber *cZA, Pdata *pdt)
     }
     ncl[i].mass = ncl[i].za.getA() + ncl[i].mass_excess / AMUNIT;
   }
-
 /*
   for(int i=0 ; i<n ; i++){
     printf("%3d %3d\n",ncl[i].za.getZ(),ncl[i].za.getA());

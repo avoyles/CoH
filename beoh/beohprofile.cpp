@@ -69,7 +69,7 @@ void beohStrengthProfile(Beta *gts, Beta *ens, BetaProfile *bpf)
       td = beohDiscreteStrength(ens,bpf);
       bpf->source = "   Mixed   ";
     }
-    if(pfactor>1.0) td = beohDiscreteScale(pfactor,bpf);
+    if(pfactor > 1.0) td = beohDiscreteScale(pfactor,bpf);
     tc = beohRenormalizeContinuum(td,bpf);
   }
 

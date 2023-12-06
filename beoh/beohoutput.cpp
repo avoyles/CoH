@@ -15,6 +15,7 @@ using namespace std;
 #include "beoh.h"
 #include "beohoutput.h"
 #include "nucleus.h"
+#include "global.h"
 #include "elements.h"
 #include "outformat.h"
 
@@ -267,17 +268,39 @@ void outLevelDensity(const int n, double d0)
 /**********************************************************/
 /*      GDR Parameter                                     */
 /**********************************************************/
-void outGDR(GDR *gdr)
+void outGDR(const bool printall, const int n)
 {
   outSectionHead("GIANT DIPOLE RESONANCE DATA");
-  cout << cline << "Energy[MeV] Width[MeV] Sigma0[mb]" << endl;
-  for(int i=0 ; i<MAX_GDR ; i++){
-    if(gdr[i].getEnergy()>0.0){
-      cout << "         " << gdr[i].getEM() << setw(1) << gdr[i].getL();
-      outVal(11,4,gdr[i].getEnergy());
-      outVal(11,4,gdr[i].getWidth());
-      outVal(11,6,gdr[i].getSigma()); nl();
+
+  for(int i=0 ; i<n ; i++){
+    if(printall){ outZA(&ncl[i].za); nl(); }
+
+    for(int k=0 ; k<MAX_GDR ; k++){
+      if(ncl[i].gdr[k].getEnergy() > 0.0){
+        cout << "         " << ncl[i].gdr[k].getEM() << setw(1) << ncl[i].gdr[k].getL();
+        string prof;
+        if(ncl[i].gdr[k].getProfile() == EX){
+          prof = "External";
+          cout << blank << blank << blank << blank << prof;
+        }
+        else{
+          outVal(11,4,ncl[i].gdr[k].getEnergy());
+          outVal(11,4,ncl[i].gdr[k].getWidth());
+          outVal(11,6,ncl[i].gdr[k].getSigma());
+
+          switch(ncl[i].gdr[k].getProfile()){
+          case SL: prof = "SL"; break;
+          case GL: prof = "GL"; break;
+          case ML: prof = "ML"; break;
+          default: prof = "  "; break;
+          }
+          cout << blank << "      " << prof;
+        }
+        nl();
+      }
     }
+
+    if(!printall) break;
   }
 }
 
@@ -427,7 +450,7 @@ void outFission(int n)
 /**********************************************************/
 /*      Particle Emission Spectra                         */
 /**********************************************************/
-void outSpectrum(const bool betacalc, const double de, double **spc)
+void outSpectrum(const bool betacalc, const double de, double **spc, Nucleus *n)
 {
   int k0 = beohZeroCut(spc);
 
@@ -437,6 +460,7 @@ void outSpectrum(const bool betacalc, const double de, double **spc)
   cout << "#     [MeV]      [MeV]";
 
   for(int j=0 ; j<MAX_CHANNEL ; j++){
+    if(!n->cdt[j].status) continue;
     cout << setw(11) << particle_name[j];
   }
   if(betacalc) cout << "   electron   neutrino";
@@ -453,6 +477,7 @@ void outSpectrum(const bool betacalc, const double de, double **spc)
     }
 
     for(int j=0 ; j<MAX_CHANNEL ; j++){
+      if(!n->cdt[j].status) continue;
       outVal(lowfilter(spc[j][k]));
     }
     if(betacalc){
@@ -469,7 +494,7 @@ void outSpectrum(const bool betacalc, const double de, double **spc)
 /**********************************************************/
 /*      Sum of Spectra and Average Energies               */
 /**********************************************************/
-void outSpectrumSum(const bool betacalc, const double de, double **spc)
+void outSpectrumSum(const bool betacalc, const double de, double **spc, Nucleus * n)
 {
   double et[MAX_CHANNEL+2], ea[MAX_CHANNEL+2], em[MAX_CHANNEL+2];
 
@@ -498,6 +523,7 @@ void outSpectrumSum(const bool betacalc, const double de, double **spc)
 
   cout << cline << blank;
   for(int j=0 ; j<MAX_CHANNEL ; j++){
+    if(!n->cdt[j].status) continue;
     cout << setw(11) << particle_name[j];
   }
   if(betacalc) cout << "   Electron   Neutrino";
@@ -506,6 +532,7 @@ void outSpectrumSum(const bool betacalc, const double de, double **spc)
   cout << "      TotalEnergy[MeV]";
   double etot = 0.0;
   for(int j=0 ; j<MAX_CHANNEL ; j++){
+    if(!n->cdt[j].status) continue;
     outVal(lowfilter(et[j]));
     etot += et[j];
   }
@@ -517,6 +544,7 @@ void outSpectrumSum(const bool betacalc, const double de, double **spc)
 
   cout << "    AverageEnergy[MeV]";
   for(int j=0 ; j<MAX_CHANNEL ; j++){
+    if(!n->cdt[j].status) continue;
     outVal(lowfilter(ea[j]));
   }
   if(betacalc){
@@ -527,6 +555,7 @@ void outSpectrumSum(const bool betacalc, const double de, double **spc)
 
   cout << "          Multiplicity";
   for(int j=0 ; j<MAX_CHANNEL ; j++){
+    if(!n->cdt[j].status) continue;
     outVal(lowfilter(em[j]));
   }
   if(betacalc){
@@ -577,7 +606,7 @@ void outSpectrumLab(const int k0, const double de, double *spl)
 /**********************************************************/
 /*      Gamma Cascade                                     */
 /**********************************************************/
-void outGammaCascade(Nucleus *n)
+void outGammaCascade(const double f, Nucleus *n)
 {
   outSectionHead("GAMMAS FROM DISCRETE TRANSITION");
   cout << cline; outZA(&n->za); cout << endl;
@@ -592,7 +621,7 @@ void outGammaCascade(Nucleus *n)
     outVal(7,1,n->lev[i0].spin);
     char p0 = (n->lev[i0].parity < 0) ? '-' : '+';
     cout << p0 << "   " << blank << blank;
-    outVal(lowfilter(n->lpop[i0]));
+    outVal(lowfilter(n->lpop[i0] * f));
     if((n->lev[i0].halflife > 0.0) && (lowfilter(n->lpop[i0]) > 0.0)){
       cout << blank <<  blank;
       outVal(n->lev[i0].halflife);
@@ -603,7 +632,9 @@ void outGammaCascade(Nucleus *n)
     for(int j=0 ; j<n->lev[i0].ngamma ; j++){
       int    i1 = n->lev[i0].fstate[j];
       double eg = n->lev[i0].energy-n->lev[i1].energy;
-      double sg = n->lev[i0].branch[j]*n->lpop[i0];
+      double sg = n->lev[i0].branch[j] * n->lpop[i0] * f;
+
+      if(opt.internalconversion) sg *= n->lev[i0].gratio[j];
 
       cout << blank << blank << setw(3) << i1;
       outVal(8,4,n->lev[i1].energy);
@@ -613,6 +644,130 @@ void outGammaCascade(Nucleus *n)
       outVal(sg); nl();
     }
   }
+}
+
+
+/**********************************************************/
+/*      All Discrete Gamma Lines                          */
+/**********************************************************/
+void outDiscreteGamma(const double f, GammaProduction *gp)
+{
+  outSectionHead("DISCRETE GAMMA PRODUCTION");
+
+  cout << "#       Z   A  Energy[MeV]   Production" << endl;
+  for(int i=0 ; i<gp->getN() ; i++){
+    outVal(5,i+1);
+    outVal(4,gp->line[i].za.getZ());
+    outVal(4,gp->line[i].za.getA());
+    outVal(13,7,gp->line[i].energy);
+    outVal(13,gp->line[i].production * f);
+    nl();
+  }
+  nl();
+  nl();
+}
+
+
+/**********************************************************/
+/*      Finer Gamma-Ray Spectra                           */
+/**********************************************************/
+void outSpectrumFineGamma(double *gc, GammaProduction *gp, const double dec, const double del)
+{
+  /*** find the highest bin of the continuum spectrum */
+  int mc;
+  for(mc=MAX_ENERGY_BIN - 1 ; mc>=0.0 ; mc--) if(gc[mc] != 0.0) break;
+  mc ++;
+
+  int ml = (mc * dec) / del; // number of finer bins
+
+  double el0, el1, ec0, ec1, gc0 = 0.0, gc1 = 0.0;
+  double *gxc = new double [ml + 1]; // re-binned continuum spec
+  double *gxl = new double [ml + 1]; // spectrum for discrete transitions
+
+  /*** adjust continuum spectrum by subtracting discrete gammas */
+  for(int kl=0 ; kl<=ml ; kl++) gxc[kl] = 0.0;
+
+  int mc0 = 0;
+  for(int kc=0 ; kc<mc-1 ; kc++){
+    ec0 = (kc == 0) ? 0.0 : (kc-0.5)*dec;
+    ec1 = (kc+0.5)*dec;
+    /*** first copy the continuum spectrum x bin width = area */
+    gc0 = gc[kc] * dec;
+
+    /*** subtract lines */
+    for(int i=0 ; i<gp->getN() ; i++){
+      if( (ec0 <= gp->line[i].energy) && (gp->line[i].energy < ec1) ){
+        gc0 -= gp->line[i].production;
+        mc0 = kc; // remember the highest bin number that was corrected
+      }
+    }
+
+    if(gc0 < 0.0) gc0 = 0.0; // avoid round-off error
+
+    /*** re-bin the continuum same as the finer grid */
+    for(int kl=0 ; kl<=ml ; kl++){
+      el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+      el1 = (kl+0.5)*del;
+
+      if( (ec0 <= el0) && (el1 <= ec1) ){ // when finer bin is inside wider bin
+        gxc[kl] += gc0 * del / dec;
+      }
+      else if( (el0 <= ec0) && (ec0 < el1) ){ // when boundary overlaps
+        if(kc != 0) gxc[kl] += gc1 * (ec0 - el0) / dec;
+        gxc[kl] += gc0 * (el1 - ec0) / dec;
+      }
+    }
+    gc1 = gc0; // previous data (kc-1)
+  }
+  mc0 ++;
+
+  /*** bining discrete lines */
+  for(int kl=0 ; kl<=ml ; kl++){
+    el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+    el1 = (kl+0.5)*del;
+    gxl[kl] = 0.0;
+    for(int i=0 ; i<gp->getN() ; i++){
+      if( (el0 <= gp->line[i].energy) && (gp->line[i].energy < el1) ) gxl[kl] += gp->line[i].production;
+    }
+    /*** convert them into /MeV unit */
+    gxl[kl] /= del;
+    gxc[kl] /= del;
+  }
+
+  int mx0 = ml; // highest bin where discrete line data exist
+  for(mx0=ml ; mx0>=0 ; mx0--) if(gxl[mx0] != 0.0) break;
+  mx0 ++;
+
+  outSectionHead("GAMMARAY SPECTRA FOR DISCRETE TRANSITIONS");
+
+  cout << "# Emin[MeV]  Emax[MeV] Disc[mb/MeV] Cont[mb/MeV]  Sum[mb/MeV]" << endl;
+
+  for(int kl=0 ; kl<=mx0 ; kl++){
+    el0 = (kl == 0) ? 0.0 : (kl-0.5)*del;
+    el1 = (kl+0.5)*del;
+    outVal(11,5,el0);
+    outVal(11,5,el1);
+    outVal(13,lowfilter(gxl[kl]));
+    outVal(13,lowfilter(gxc[kl]));
+    outVal(13,lowfilter(gxl[kl] + gxc[kl]));
+    nl();
+  }
+
+  for(int kc=mc0 ; kc<=mc ; kc++){
+    ec0 = (kc == mc0) ? el1 : (kc-0.5)*dec;
+    ec1 = (kc+0.5)*dec;
+    outVal(11,5,ec0);
+    outVal(11,5,ec1);
+    outVal(13,0.0);
+    outVal(13,lowfilter(gc[kc]));
+    outVal(13,lowfilter(gc[kc]));
+    nl();
+  }
+  nl();
+  nl();
+
+  delete [] gxc;
+  delete [] gxl;
 }
 
 
@@ -632,6 +787,7 @@ void outTotalResidual(CumulativeResidualProduct *res)
   for(unsigned int z=res->zmin ; z<=res->zmax ; z++){
     for(unsigned int a=res->amin ; a<=res->amax ; a++){
       ZAnumber za(z,a);
+
       for(int i=0 ; i<res->getNcurrent() ; i++){
         if(res->rp[i].za != za) continue;
 

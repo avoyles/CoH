@@ -100,6 +100,9 @@ double kckSpinCutoff(double a)
 {
 //double sigma2 = 0.0465 *a + 4.296;
   double sigma2 = -0.000303626 * a*a + 0.141231 * a - 0.264688;
+//double sigma2 = -0.000210084 * a*a + 0.0968439 * a + 0.938983; //from ENSDF
+
+
   if(sigma2 < 3.70) sigma2 = 3.70; // A < 30
 
   return(sigma2);

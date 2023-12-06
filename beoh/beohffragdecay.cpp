@@ -14,6 +14,7 @@ using namespace std;
 #include "statmodel.h"
 #include "beohstat.h"
 #include "nucleus.h"
+#include "global.h"
 #include "terminate.h"
 
 static void beohStoreFFragPopulation(const int, BData *);
@@ -30,7 +31,7 @@ static GDR           gdr[MAX_GDR];
 /**********************************************************/
 /*      Decay of Each Fission Fragment                    */
 /**********************************************************/
-void beohFFDecay(const int nc, System *sys, Pdata *pdt, BData *bdt, bool printindiv)
+void beohFFDecay(const int nc, System *sys, Pdata *pdt, BData *bdt, GammaProduction *gml, bool printindiv)
 {
   int jmax = MAX_J-1;
 
@@ -53,16 +54,19 @@ void beohFFDecay(const int nc, System *sys, Pdata *pdt, BData *bdt, bool printin
   beohStoreFFragPopulation(nc,bdt);
 
   /*** statistical decay calculation */
-  if(ncl[0].ncont > 0) beohspectra(sys,pdt,tc,td,tg,&spc);
-  else                 specGammaCascade(spc.cn[0],&ncl[0]);
+  if(ncl[0].ncont > 0) beohspectra(sys,pdt,tc,td,tg,&spc,gml);
+  else{
+    specGammaCascade(spc.cn[0],&ncl[0]);
+    if(opt.finegammaspectrum) specStoreDiscreteGamma(&ncl[0],gml);
+  }
 
   /*** print stat calc result for individual CN */
   if(printindiv){
     outSystem(bdt->getMode(),sys);
     outLevelDensity(sys->max_compound,0.0);
-    outGDR(gdr);
+    outGDR(false,sys->max_compound);
     outCompound(sys->max_compound,pdt);
-    outSpectrumSum(false,ncl[0].de,crx.spectra);
+    outSpectrumSum(false,ncl[0].de,crx.spectra,&ncl[0]);
     outGSProduction(sys->max_compound);
   }
 }
@@ -89,6 +93,16 @@ void beohStoreFFragPopulation(const int nc, BData *bdt)
     int nstart = beohStoreLevelExcite(1.0,&ncl[0]);
     ncl[0].ndisc = nstart;
   }
+
+  double j0 = halfint(ncl[0].lev[0].spin);
+  double xp = 0.0, xj = 0.0;
+  for(int k=0 ; k<ncl[0].ncont ; k++){
+    for(int j=0 ; j<MAX_J ; j++){
+      xp +=  ncl[0].pop[k][j].even + ncl[0].pop[k][j].odd;
+      xj += (ncl[0].pop[k][j].even + ncl[0].pop[k][j].odd) * (j + j0);
+    }
+  }
+  bdt[0].averagespin = (xp > 0.0) ? xj / xp : 0.0; // although xp should be unity
 }
 
 
@@ -109,7 +123,7 @@ int beohFFDecayPrep(System *sys, Pdata *pdt)
 }
 
 
-void beohFFDecaySpec(System *sys, Pdata *pdt, BData *bdt, const int jmax, const int n, double *speclab)
+void beohFFDecaySpec(System *sys, Pdata *pdt, BData *bdt, GammaProduction *gml, const int jmax, const int n, double *speclab)
 {
   for(int i=0 ; i<MAX_GDR ; i++) gdr[i].clear();
 
@@ -125,7 +139,7 @@ void beohFFDecaySpec(System *sys, Pdata *pdt, BData *bdt, const int jmax, const 
 
   if(ncl[0].ncont > 0){
     beohStoreFFragPopulation(1,bdt);
-    beohspectra(sys,pdt,tc,td,tg,&spc);
+    beohspectra(sys,pdt,tc,td,tg,&spc,gml);
   }
   else specGammaCascade(spc.cn[0],&ncl[0]);
 
@@ -173,8 +187,8 @@ void beohFFDecayAllocateMemory()
     }
 
     /*** allocate photon transmission array */
-    tg = new double * [MAX_MULTIPOL];
-    for(int i=0 ; i<MAX_MULTIPOL ; i++) tg[i] = new double [MAX_ENERGY_BIN];
+    tg = new double * [MAX_ENERGY_BIN];
+    for(int k=0 ; k<MAX_ENERGY_BIN ; k++) tg[k] = new double [MAX_MULTIPOL];
 
     /*** allocate energy spectra arrays */
     spc.memalloc(MAX_CHANNEL,MAX_ENERGY_BIN,MAX_LEVELS);
@@ -200,7 +214,7 @@ void beohFFDecayDeleteAllocated()
   delete [] tc;
   delete [] td;
 
-  for(int i=0 ; i<MAX_MULTIPOL ; i++) delete [] tg[i];
+  for(int k=0 ; k<MAX_ENERGY_BIN ; k++) delete [] tg[k];
   delete [] tg;
 
   spc.memfree();

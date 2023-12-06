@@ -40,6 +40,9 @@ void setupClearParameter(int mc, System *sys, Pdata *pdt, GDR *gdr)
 
   crx.init();
   for(int i=0 ; i<MAX_COMPOUND ; i++) crx.prod[i].init();
+
+  /*** clear gamma-ray production array */
+  gml.init();
 }
 
 
@@ -207,5 +210,42 @@ void setupEnergy(bool betacalc, System *sys)
   else{
     sys->excitation = sys->ex_total;
   }
+}
+
+
+/**********************************************************/
+/*     Set Particle Data                                  */
+/**********************************************************/
+Pdata setupParticle(const Particle p)
+{
+  Pdata pdt;
+
+  switch(p){
+  case neutron:
+    pdt.za.setZA(0,1);  pdt.mass = MNEUTRON;   pdt.mass_excess = ENEUTRON;
+    break;
+  case proton:
+    pdt.za.setZA(1,1);  pdt.mass = MPROTON;    pdt.mass_excess = EPROTON;
+    break;
+  case alpha:
+    pdt.za.setZA(2,4);  pdt.mass = MALPHA;     pdt.mass_excess = EALPHA;
+    break;
+  case deuteron:
+    pdt.za.setZA(1,2);  pdt.mass = MDEUTERON;  pdt.mass_excess = EDEUTERON;
+    break;
+  case triton:
+    pdt.za.setZA(1,3);  pdt.mass = MTRITON;    pdt.mass_excess = ETRITON;
+    break;
+  case helion:
+    pdt.za.setZA(2,3);  pdt.mass = MHELIUM3;   pdt.mass_excess = EHELIUM3;
+    break;
+  case gammaray:
+    // fall through
+  default:
+    pdt.za.setZA(0,0);  pdt.mass = 0.0;        pdt.mass_excess = 0.0;
+    break;
+  }
+
+  return(pdt);
 }
 

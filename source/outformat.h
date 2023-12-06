@@ -1,7 +1,4 @@
-/*
-   outputformat.h :
-        formatting of output values
- */
+// formatting of output values
 
 /*** lower limit of output values, enforce zero */
 static const double output_eps = 1.0e-99;
@@ -13,6 +10,7 @@ static string dashl=" ----------";
 static const int DisplayWidth = 99;
 
 void outSectionHead (const char *);
+double outRetrieveLabE (void);
 
 static inline double lowfilter(double x)
 { if(fabs(x) < output_eps) return 0.0; else return(x); }

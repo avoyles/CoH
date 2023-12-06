@@ -24,22 +24,27 @@ beoh_SOURCES = \
 	beohprofile.cpp \
 	beohsetup.cpp \
 	beohspectra.cpp \
+	beohspecmc.cpp \
 	ffpmultichance.cpp \
 	ffpparameter.cpp \
 	ffpoutput.cpp \
 	ffpyield.cpp \
+	ffpyieldread.cpp \
 	ffp.h \
 	wahl.cpp \
 	wahl.h \
 	betachain.h \
 	fobs.h \
+	mchf.h \
 	$(COHSRC) $(OMPLIB)
 
 COHSRC = \
 	asympt.cpp \
 	beta2.cpp \
 	builtin.cpp \
+	coulomb.cpp \
 	coupling.cpp \
+	datatable.cpp \
 	etc.cpp \
 	extwave.cpp \
 	fisdens.cpp \
@@ -49,6 +54,7 @@ COHSRC = \
 	gamcas.cpp \
 	gdr.cpp \
 	gtrans.cpp \
+	gtransread.cpp \
 	intwave.cpp \
 	kcksyst.cpp \
 	levden.cpp \

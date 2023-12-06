@@ -1,9 +1,5 @@
-/*
-   ripl2levels.h : 
-        define discrete level data file location
-        prototype of function to read disclete level data
- */
-
+// define discrete level data file location
+// prototype of function to read disclete level data
 
 #ifndef __DIR_H__
 #define __DIR_H_

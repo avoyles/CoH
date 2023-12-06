@@ -1,8 +1,5 @@
-/*
-   outprep.h :
-        perform summation of all emerging ground states and isomeric states
-        and print the production cross sections of these states
- */
+// perform summation of all emerging ground states and isomeric states
+// and print the production cross sections of these states
 
 #ifndef __METASTABLE_H__
 #define __METASTABEL_H__

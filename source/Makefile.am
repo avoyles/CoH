@@ -35,7 +35,9 @@ coh_SOURCES = \
 	bstatwav.cpp \
 	coh.cpp \
 	cohmain.cpp \
+	coulomb.cpp \
 	dataread.cpp \
+	datatable.cpp \
 	dsd.cpp \
 	dsdoverlap.cpp \
 	eclddx.cpp \
@@ -62,6 +64,7 @@ coh_SOURCES = \
 	gamcas.cpp \
 	gdr.cpp \
 	gtrans.cpp \
+	gtransread.cpp \
 	knockout.cpp \
 	levden.cpp \
 	macs.cpp \
@@ -125,7 +128,9 @@ coh_SOURCES = \
 	coh.h \
 	cohegrid.h \
 	constant.h \
+	coulomb.h \
 	coupling.h \
+	datatable.h \
 	dir.h \
 	dsd.h \
 	eclipse.h \

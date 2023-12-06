@@ -13,13 +13,15 @@ using namespace std;
 #include "exciton.h"
 #include "parameter.h"
 
+#define NO_PAIRING_SHIFT
+
 extern double *fact;
 
 
 /**********************************************************/
 /*      Single Particle State Density                     */
 /**********************************************************/
-double preqSingleStateDensity(int c, int x)
+double preqSingleStateDensity(const int c, const int x)
 {
   double f;
 
@@ -37,7 +39,7 @@ double preqSingleStateDensity(int c, int x)
 /**********************************************************/
 /*      Pairing Energy - Delta                            */
 /**********************************************************/
-double preqPairingDelta(int z, int a)
+double preqPairingDelta(const int z, const int a)
 {
   int n = a-z;
   int c = 1;
@@ -51,7 +53,7 @@ double preqPairingDelta(int z, int a)
 /**********************************************************/
 /*      Fu's Pairing Correction Factor                    */
 /**********************************************************/
-double preqPairingCorrection(int n, double ex, SPdens *p)
+double preqPairingCorrection(const int n, const double ex, SPdens *p)
 {
   if(p->pairing == 0.0) return(0.0);
 
@@ -76,7 +78,7 @@ double preqPairingCorrection(int n, double ex, SPdens *p)
 /*      Pauli Blocking Correction                         */
 /**********************************************************/
 
-double preqPauliCorrection(int zp, int zh, int np, int nh, double gz, double gn)
+double preqPauliCorrection(const int zp, const int zh, const int np, const int nh, const double gz, const double gn)
 {
   if(zp < 0 || zh < 0 || np < 0 || nh < 0) return(0.0);
 
@@ -91,7 +93,7 @@ double preqPauliCorrection(int zp, int zh, int np, int nh, double gz, double gn)
 /**********************************************************/
 /*      Averaged Matrix Elements by Koning                */
 /**********************************************************/
-double preqMSquare(int a, int n, Preeq *q)
+double preqMSquare(const int a, const int n, Preeq *q)
 {
   double a3   = pow(a,3.0);
   double msq  = ( 6.8 + 4.2e+5/pow(q->ex_total/(double)n+10.7,3.0) )/a3;
@@ -111,7 +113,7 @@ double preqMSquare(int a, int n, Preeq *q)
 /*      Finite Potential Well Function                    */
 /*      This includes Kalbach surface effect for h=1      */
 /**********************************************************/
-double preqFiniteWell(int n, int h, double ex, double v)
+double preqFiniteWell(const int n, const int h, const double ex, double v)
 {
   const double ef = 38.0;
   if(h > 1) v = ef;
@@ -164,7 +166,7 @@ double preqFiniteWell(int n, int h, double ex, double v)
 /**********************************************************/
 /*      Finite Potential Well Depth Parameter             */
 /**********************************************************/
-double preqPotentialDepth(double e, int zi, int at)
+double preqPotentialDepth(const double e, const int zi, const int at)
 {
   double a3 = pow((double)at,-1.0/3.0);
   double e4 = pow(e,4.0);
@@ -178,7 +180,7 @@ double preqPotentialDepth(double e, int zi, int at)
 /**********************************************************/
 /*      State Density by Betak and Dobes                  */
 /**********************************************************/
-double preqStateDensity(double ex, SPdens *spd, Exconf *exc)
+double preqStateDensity(const double ex, SPdens *spd, Exconf *exc)
 {
   const double eps = 1.0e-10;
   double omega = 0.0;
@@ -191,7 +193,11 @@ double preqStateDensity(double ex, SPdens *spd, Exconf *exc)
   if(exc->zp < 0 || exc->zh < 0 || exc->np < 0 || exc->nh < 0) return(omega);
   if(ex <= 0.0) return(omega);
 
+#ifdef NO_PAIRING_SHIFT
+  double ux = ex;
+#else
   double ux = ex - preqPairingCorrection(n,ex,spd);
+#endif
   double ap = preqPauliCorrection(exc->zp,exc->zh,exc->np,exc->nh,spd->gz,spd->gn);
 
   if(ux < 0.0 || ux <= ap || abs(ux - ap) < eps) return(omega);
@@ -204,3 +210,19 @@ double preqStateDensity(double ex, SPdens *spd, Exconf *exc)
   return(omega);
 }
 
+
+/**********************************************************/
+/*      Collective Enhancement of State Density           */
+/**********************************************************/
+double preqCollectiveEnhancement(const double ex, Exconf *exc)
+{
+  const double coll_damp = 1.0;
+  double coll = 1.0;
+  int n  = exc->zp + exc->np + exc->zh + exc->nh;
+  /*** only for 1p-1h configuration after nucleon emission */
+  if(n == 2){
+    coll = (parmGetFactor(parmCOLL) - 1.0) * exp(-coll_damp * ex) + 1.0;
+  }
+
+  return(coll);
+}

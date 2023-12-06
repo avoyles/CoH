@@ -32,7 +32,11 @@ This package includes:
    + source
        - main source files
    + beoh
-       - derivative program: BeOH, source files for beta-decay calculations
+       - derivative program: BeoH, source files for beta-decay calculations
+   + frdm
+       - stand-alone FRDM code with FRLDM
+   + froh
+       - derivative program: microscopic level density calculation code
 
    kcksyst.dat
        - level density parameters to be copied in to a system directory

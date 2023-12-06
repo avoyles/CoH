@@ -1,6 +1,4 @@
-/*
-   omcalc.h : prototype of optical model subroutines
- */
+// functions for optical model calculations
 
 /**************************************/
 /*      omcalc.cpp                    */

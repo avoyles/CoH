@@ -25,6 +25,7 @@ libomp_a_SOURCES = \
 	test.cpp \
 	walter.cpp \
 	wilmore.cpp \
+        wlh.cpp \
 	young.cpp
 
 AM_CXXFLAGS = \

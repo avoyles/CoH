@@ -1,8 +1,5 @@
-/*
-   terminate.h : 
-        prototype of function to terminate code execution
-        the function is defined in main.cpp
- */
+// function to terminate code execution
+// these functions are defined in main.cpp
 
 #ifndef COH_TOPLEVEL
 #include <sstream>

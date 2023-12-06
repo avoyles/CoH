@@ -84,8 +84,7 @@ double fnsTKEEnergyDependence(double tke0, double tke1, double sn, const int n, 
     x1 += pf[i] * tke;
   }
   if(x0 > 0.0) tke = x1 / x0;
-
-//cout << sn <<" " << tke0 << " " << tke1 << " " << tke << endl;
+  else tke = tke0 + tke1 * ex[0];
 
   return(tke);
 }

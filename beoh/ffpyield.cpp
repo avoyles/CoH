@@ -4,8 +4,8 @@
 /******************************************************************************/
 
 #include <sstream>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <iomanip>
 #include <cmath>
 
@@ -22,17 +22,19 @@ static const unsigned char DEBUG_NORM = 0x04;
 static const unsigned char DEBUG_CHRG = 0x08;
 static const unsigned char DEBUG_ENRG = 0x10;
 static const unsigned char DEBUG_ATKE = 0x20;
+static const unsigned char DEBUG_LUNG = 0x40;
 
 //static unsigned char DEBUG_ID = DEBUG_MASS | DEBUG_LIST;
-static unsigned char DEBUG_ID = 0x0;
+static unsigned char DEBUG_ID = 0x00;
 
 static void FFPDebug (unsigned char, FissionFragmentPair *);
 
 /* data for fission yield */
 static double *tke, *dtke;                    // TKE(A) and its width
-static double *chain_yield, **charge_dist;    // Y(A), Y(Z,A)
+static double *mass_yield, **charge_dist;    // Y(A), Y(Z,A)
 static int    *charge_first;                  // smallest Z number for Y(Z,A) data
 
+static void   FFPMassYieldTune (FissionFragmentPair *, const int, int *, double *);
 static void   FFPZAList (FissionFragmentPair *);
 static void   FFPYield (FissionFragmentPair *);
 static void   FFPTXEDistribution (FissionFragmentPair *);
@@ -41,9 +43,9 @@ static void   FFPDeleteAllocated (FissionFragmentPair *);
 
 
 /**********************************************************/
-/*      Mass-Chain Yield by Gaussians                     */
+/*      Mass Yield by Gaussians                           */
 /**********************************************************/
-void FFPMassChainYieldParameters(const bool sf, string data, double *sigma, double *delta, double *fract, FissionFragmentPair *ffp)
+void FFPMassYieldParameters(const bool sf, string data, double *sigma, double *delta, double *fract, FissionFragmentPair *ffp)
 {
   /*** internal Gaussian mass distribution based on experimental data */
   if(data == "internal"){
@@ -69,130 +71,61 @@ void FFPMassChainYieldParameters(const bool sf, string data, double *sigma, doub
 
 
 /**********************************************************/
-/*            Fragment Yield from Raw Data File           */
+/*      Gaussian parameters from external file            */
 /**********************************************************/
-void FFPReadRawYield(string filename, FissionFragmentPair *ffp)
+void FFPConstructYieldParameters(double *ya, double en, double *sigma, double *delta, double *fract, FissionFragmentPair *ffp)
 {
-  /*** Read the raw primary fragment yield data from formatted ASCII file */
 
-  unsigned int maxA = 0;   // The maximum fragment mass
-  unsigned int minA = 400; // The minimum fragment mass
-  double tke_file[minA];   // Read in TKE(A)
-  double dtke_file[minA];  // Read in dTKE(A)
+  /*** Construct the Gaussian parametrization from the input YA file */
+  fract[0] = 1.0/(1.0 + exp((en - ya[0]) / ya[1]));
+  fract[1] = 1.0/(1.0 + exp((en - ya[6]) / ya[7]));
+  fract[2] = 0.0;
+  fract[3] = 2.0 - 2.0*(fract[0] + fract[1]); // keeps the correct normalization
 
-  /*** allocate data arrays */
-  FFPAllocateMemory(ffp);
+  // TO DO: set fract[3] and reconstruct fract[2]
 
-  // File exists so continue
-  ifstream infile(filename.c_str(),ifstream::in);
-  if(!infile){
-    message << "File " << filename << " does not exist!";
-    cohTerminateCode("FFPReadRawYield");
+  delta[0] = ya[2] + ya[3] * en;
+  delta[1] = ya[8] + ya[9] * en;
+  delta[2] = 0.0;
+  delta[3] = ya[12] + ya[13] * en;
+
+  sigma[0] = ya[4] + ya[5] * en;
+  sigma[1] = ya[10] + ya[11] * en;
+  sigma[2] = 0.0;
+  sigma[3] = ya[14] + ya[15] *en;
+
+  /*** copy parameters to FissionFragmentProduct object */
+  ffp->resetN();
+  for (int i=0 ; i<4 ; i++){
+   ffp->setGauss(sigma[i],delta[i],fract[i]);
+   if (delta[i] != 0.0) ffp->setGauss(sigma[i],-delta[i],fract[i]);
   }
-
-  double am = ffp->af * 0.5;
-
-  // Read raw data
-  string str;
-  int k = 0; // nuclide counter
-  while(getline(infile,str)){
-    if(str[0] == '#') continue;
-
-    unsigned int zl;         // The light fragment charge
-    unsigned int al;         // The light fragment mass
-    double y;                // The fragment pair yield
-    double ke;               // The fragment pair total kinetic energy
-    double dke;              // The fragment pair distribution in kinetic energy
-
-    // Read data from file
-    istringstream ss(str);
-    ss >> zl >> al >> y >> ke >> dke;
-
-    // Automatically skip the heavy fragment if it is provided
-    if((double)al > am) continue;
-
-    // Calculate split partner
-    unsigned int zh = ffp->zf - zl;
-    unsigned int ah = ffp->af - al;
-
-    // Calculate Q value for partition
-    double mcn = mass_excess(ffp->zf,ffp->af) + ffp->ex;
-    double q   = mcn - (mass_excess(zl,al) + mass_excess(zh,ah));
-
-    // Consistency check for total excitation energy
-    if(q - ke > 0.0){
-      // Save fragment information
-      ffp->fragment[k].setPair(zl,al,zh,ah);
-      ffp->fragment[k].qval  = q;      // Set the Q-value
-      ffp->fragment[k].yield = y;      // Set the fragment yield
-      ffp->fragment[k].ex = q - ke;    // Set the TXE
-      ffp->fragment[k].ek = ke;        // Set the TKE
-      tke_file[al] = tke_file[ah] = ke;
-      dtke_file[al] = dtke_file[ah] = dke;
-      if (al <= minA) { minA = al; }
-      if (ah >= maxA) { maxA = ah; }
-      k++;
-    }
-  }
-  infile.close();
-
-  // Set the total number of nuclides (assuming blank line in file there should be one less)
-  ffp->setN(k-1);
-  ffp->setZARange(minA, 20);
-
-  // Set the number of Gaussians to zero
-  ffp->setG(0);
-
-  // Set TKE(A) from the read in data file and some generic systematics for width
-  for(int i=0 ; i<ffp->nmass ; i++){
-    int a = i + ffp->mass_first; // Offset which gives fragment mass, a
-    tke[i] = tke_file[a];
-    dtke[i] = dtke_file[a];    
-  }
-  
-  // Finally, calculate width of TXE, assuming it is proportional to TKE
-  for(int k=0 ; k<ffp->getN() ; k++){
-    // Average TKE
-    double tke0 = tke[ffp->fragment[k].getAl() - ffp->mass_first];
-    // Set the width of TXE (this comes from error propagation of the <TKE>(A) - see Shin Okumura's paper)
-    ffp->fragment[k].sigma = ffp->fragment[k].ek * dtke[ffp->fragment[k].getAl() - ffp->mass_first] / tke0;
-  }
-
-  // Renormalize the yields
-  double s = 0.0;
-  for(int k=0 ; k<ffp->getN() ; k++) s += ffp->fragment[k].yield;
-  for(int k=0 ; k<ffp->getN() ; k++) ffp->fragment[k].yield /= s;
-  
-  // For debugging purposes print out yield averaged TKE so we know we're on the right track before the long calculation starts
-  cout << "# <TKE> = " << FFPAverageTKE(ffp) << endl;
-
-  // Debugging 
-  // FFPDebug(DEBUG_LIST, ffp);
-  // FFPDebug(DEBUG_ENRG | DEBUG_CHRG | DEBUG_ATKE, ffp);
-
-  FFPDeleteAllocated(ffp);
 }
 
 
 /**********************************************************/
 /*      Fission Fragment Pair and Yield Calculation       */
 /**********************************************************/
-void FFPGeneratePairs(const bool sf, const double tke_input, FissionFragmentPair *ffp, double *fzn)
+void FFPGeneratePairs(const bool sf, const double tke_input, FissionFragmentPair *ffp, double *fzn, int nft, int *ftmass, double *ftfactor)
 {
   /*** allocate data arrays */
   FFPAllocateMemory(ffp);
 
   /*** mass chain yield by Gaussians */
   for(int i=0 ; i<ffp->nmass ; i++){
-    chain_yield[i] = 0.0;
+    mass_yield[i] = 0.0;
     int a = i + ffp->mass_first;
     for(int k=0 ; k<ffp->getNg() ; k++){
       if(ffp->getGaussWidth(k) > 0.0){
         double da = a - ffp->ac + ffp->getGaussCenter(k);
-        chain_yield[i] += gaussian(ffp->getGaussFraction(k),da,ffp->getGaussWidth(k));
+        mass_yield[i] += gaussian(ffp->getGaussFraction(k),da,ffp->getGaussWidth(k));
       }
     }
   }
+
+  /*** fine tune mass yield */
+  if(nft > 0) FFPMassYieldTune(ffp,nft,ftmass,ftfactor);
+
   if(DEBUG_ID & DEBUG_MASS) FFPDebug(DEBUG_MASS,ffp);
 
   /*** TKE(A) and its width from the systematics */
@@ -239,10 +172,204 @@ void FFPGeneratePairs(const bool sf, const double tke_input, FissionFragmentPair
 
   if(DEBUG_ID & DEBUG_ENRG) FFPDebug(DEBUG_ENRG,ffp);
   if(DEBUG_ID & DEBUG_ATKE) FFPDebug(DEBUG_ATKE,ffp);
+  if(DEBUG_ID & DEBUG_LUNG) FFPDebug(DEBUG_LUNG,ffp);
+
+  /*** free allocated memory */
+  FFPDeleteAllocated(ffp);
+}
+
+
+/**********************************************************/
+/*      Fission Fragment Pair When Y(A,TKE) Given         */
+/**********************************************************/
+void FFPGeneratePairsExpdata(FissionFragmentPair *ffp, double *fzn, double **dat, const int mmin, const int mmax, const int tmin, const int tmax)
+{
+  /*** allocate data arrays */
+  FFPAllocateMemory(ffp);
+
+  /*** min values of A and TKE given in data */
+  int nt = tmax - tmin + 1;
+  int nm = mmax - mmin + 1;
+
+  /*** Y(A), TKE, dTKE from Y(A,TKE) */
+  double s = 0.0;
+  for(int i=0 ; i<ffp->nmass ; i++){
+    mass_yield[i] = tke[i] = dtke[i] = 0.0;
+
+    int al = i + ffp->mass_first;
+    int ah = ffp->af - al;
+
+    if((double)al > ffp->ac) break;
+
+    /*** average Y and TKE */
+    double c = 0.0, t = 0.0;
+    for(int j=0 ; j<nm ; j++){
+      for(int k=0 ; k<nt ; k++){
+        if(j + mmin == ah){
+          c += dat[j][k];
+          t += dat[j][k] * (k + tmin);
+        }
+      }
+    }
+    mass_yield[i] = c;
+    if(c > 0.0) tke[i] = t / c;
+    s += c;
+
+    /*** variance of TKE */
+    double d = 0.0;
+    for(int j=0 ; j<nm ; j++){
+      for(int k=0 ; k<nt ; k++){
+        if(j + mmin == ah){
+          d +=  dat[j][k] * (k + tmin - tke[i]) * (k + tmin - tke[i]);
+        }
+      }
+    }
+    if(c > 0.0) dtke[i] = sqrt(d / c);
+  }
+  if(s > 0.0){
+    for(int i=0 ; i<ffp->nmass ; i++) mass_yield[i] /= s;
+  }
+  if(DEBUG_ID & DEBUG_MASS) FFPDebug(DEBUG_MASS,ffp);
+
+  WahlZpModel(ffp->zf,ffp->af,ffp->mass_first,ffp->nmass,ffp->ncharge,ffp->ex,charge_dist,charge_first,fzn);
+  FFPZAList(ffp);
+  if(DEBUG_ID & DEBUG_LIST) FFPDebug(DEBUG_LIST,ffp);
+
+  FFPYield(ffp);
+  if(DEBUG_ID & DEBUG_NORM) FFPDebug(DEBUG_NORM,ffp);
+  if(DEBUG_ID & DEBUG_CHRG) FFPDebug(DEBUG_CHRG,ffp);
+
+  FFPTXEDistribution(ffp);
+
+  if(DEBUG_ID & DEBUG_ENRG) FFPDebug(DEBUG_ENRG,ffp);
+  if(DEBUG_ID & DEBUG_ATKE) FFPDebug(DEBUG_ATKE,ffp);
+  if(DEBUG_ID & DEBUG_LUNG) FFPDebug(DEBUG_LUNG,ffp);
+
+  /*** free allocated memory */
+  FFPDeleteAllocated(ffp);
+}
+
+
+/**********************************************************/
+/*      Fission Fragment Pair and Yield Calculation       */
+/*      When TKE(A) and sTKE(A) are read in from file     */
+/**********************************************************/
+void FFPGeneratePairs(const bool sf, const double tke_input, FissionFragmentPair *ffp, double *fzn, double *tkea, double *stkea, int nft, int *ftmass, double *ftfactor)
+{
+  /*** allocate data arrays */
+  FFPAllocateMemory(ffp);
+
+  /*** mass chain yield by Gaussians */
+  for(int i=0 ; i<ffp->nmass ; i++){
+    mass_yield[i] = 0.0;
+    int a = i + ffp->mass_first;
+    for(int k=0 ; k<ffp->getNg() ; k++){
+      if(ffp->getGaussWidth(k) > 0.0){
+        double da = a - ffp->ac + ffp->getGaussCenter(k);
+        mass_yield[i] += gaussian(ffp->getGaussFraction(k),da,ffp->getGaussWidth(k));
+      }
+    }
+  }
+
+  /*** fine tune mass yield */
+  if(nft > 0) FFPMassYieldTune(ffp,nft,ftmass,ftfactor);
+
+
+  if(DEBUG_ID & DEBUG_MASS) FFPDebug(DEBUG_MASS,ffp);
+
+  /*** TKE(A) and its width from the systematics */
+  for(int i=0 ; i<ffp->nmass ; i++){
+    tke[i] = FFPConstructTKEA(ffp->af,i+ffp->mass_first,tkea);
+    dtke[i] = FFPConstructSigmaTKEA(ffp->af,i+ffp->mass_first,stkea);
+    //tke[i] =  FFPSystematics_TKE_A(sf,ffp->zf,ffp->af,i+ffp->mass_first,tke_input);
+    //dtke[i] = FFPSystematics_TKE_A_Width(sf,ffp->zf,ffp->af,i+ffp->mass_first);
+  }
+
+  /*** Z-distribution by Wahl's Zp model */
+  WahlZpModel(ffp->zf,ffp->af,ffp->mass_first,ffp->nmass,ffp->ncharge,ffp->ex,charge_dist,charge_first,fzn);
+
+  /*** prepare Z and A list and reaction Q-value in FissionPair object */
+  FFPZAList(ffp);
+  if(DEBUG_ID & DEBUG_LIST) FFPDebug(DEBUG_LIST,ffp);
+
+  /*** independent yield for a given set of Z and A */
+  FFPYield(ffp);
+  if(DEBUG_ID & DEBUG_NORM) FFPDebug(DEBUG_NORM,ffp);
+  if(DEBUG_ID & DEBUG_CHRG) FFPDebug(DEBUG_CHRG,ffp);
+
+  /*** TXE distributions */
+  FFPTXEDistribution(ffp);
+
+  /*** check average TKE and distribution */
+  double t0 = tke_input;
+  double t1 = FFPAverageTKE(ffp);
+
+  /*** adjust TKE(A) to give the fixed value */
+  // if(t0 != 0.0 && t1 != 0.0){
+  //   for(int i=0 ; i<ffp->nmass ; i++) tke[i] = FFPSystematics_TKE_A(sf,ffp->zf,ffp->af,i+ffp->mass_first,tke_input) * t0 / t1;
+  //   FFPZAList(ffp);
+  //   FFPYield(ffp);
+  //   FFPTXEDistribution(ffp);
+  // }
+
+  if(t0 != 0.0){
+    double delta = t0 - t1;
+    //for(int i=0 ; i<ffp->nmass ; i++) tke[i] = FFPSystematics_TKE_A(sf,ffp->zf,ffp->af,i+ffp->mass_first,tke_input) + delta;
+    for(int i=0 ; i<ffp->nmass ; i++) tke[i] = FFPConstructTKEA(ffp->af,i+ffp->mass_first,tkea) + delta;
+    FFPZAList(ffp);
+    FFPYield(ffp);
+    FFPTXEDistribution(ffp);
+    t1 = FFPAverageTKE(ffp);
+  }
+
+  if(DEBUG_ID & DEBUG_ENRG) FFPDebug(DEBUG_ENRG,ffp);
+  if(DEBUG_ID & DEBUG_ATKE) FFPDebug(DEBUG_ATKE,ffp);
 
 
   /*** free allocated memory */
   FFPDeleteAllocated(ffp);
+}
+
+
+/**********************************************************/
+/*      Fine Tune Mass Yield at Given Mass Points         */
+/**********************************************************/
+void FFPMassYieldTune(FissionFragmentPair *ffp, const int nft, int *ftmass, double *ftfactor)
+{
+  const double width = 2.0;
+  double *dy = new double [ffp->nmass];
+  for(int i=0 ; i<ffp->nmass ; i++) dy[i] = 0.0;
+
+  /*** for all given A numbers */
+  int al = 0, ah = 0;
+  for(int j=0 ; j<nft ; j++){
+    if(ftmass[j] < ffp->ac){
+      al = ftmass[j];
+      ah = ffp->af - al;
+    }
+    else{
+      ah = ftmass[j];
+      al = ffp->af - ah;
+    }
+
+    /*** Gaussian centered at Al and Ah with the default width */
+    for(int i=0 ; i<ffp->nmass ; i++){
+      int a = i + ffp->mass_first;
+      dy[i] += gaussian(ftfactor[j]-1.0, a-al, width);
+      dy[i] += gaussian(ftfactor[j]-1.0, a-ah, width);
+    }
+  }
+
+  /*** add to mass yield, and re-normalize it again */
+  double s = 0.0;
+  for(int i=0 ; i<ffp->nmass ; i++){
+    mass_yield[i] += dy[i];
+    s += mass_yield[i];
+  }
+  s = 2.0 / s;
+  for(int i=0 ; i<ffp->nmass ; i++) mass_yield[i] *= s;
+
+  delete [] dy;
 }
 
 
@@ -320,7 +447,7 @@ void FFPYield(FissionFragmentPair *ffp)
     for(int k=0 ; k<ffp->getN() ; k++){
       if(ffp->fragment[k].getAl() != (unsigned int)al) continue;
       int j = ffp->fragment[k].getZl() - charge_first[i];
-      if((0 <= j) && (j < ffp->ncharge)) ffp->fragment[k].yield = chain_yield[i] * charge_dist[i][j] * sum;
+      if((0 <= j) && (j < ffp->ncharge)) ffp->fragment[k].yield = mass_yield[i] * charge_dist[i][j] * sum;
     }
   }
 }
@@ -379,6 +506,7 @@ double FFPAverageTKE(FissionFragmentPair *ffp)
     y += ffp->fragment[k].yield;
     e += ffp->fragment[k].yield * ffp->fragment[k].ek;
   }
+  if(y > 0.0) e /= y;
 
   return e;
 }
@@ -488,7 +616,7 @@ void FFPAllocateMemory(FissionFragmentPair *ffp)
   try{
     tke          = new double [ffp->nmass];   // TKE(A)
     dtke         = new double [ffp->nmass];   // width of TKE(A)
-    chain_yield  = new double [ffp->nmass];   // Chain Yield Y(A)
+    mass_yield   = new double [ffp->nmass];   // Mass Yield Y(A)
     charge_first = new int    [ffp->nmass];   // lowest Z number for each Z-dist
     charge_dist  = new double * [ffp->nmass]; // probability of Z for a given A
     for(int i=0 ; i<ffp->nmass; i++) charge_dist[i] = new double [ffp->ncharge];
@@ -499,7 +627,7 @@ void FFPAllocateMemory(FissionFragmentPair *ffp)
   }
 
   for(int a=0 ; a<ffp->nmass; a++){
-    tke[a] = dtke[a] = chain_yield[a] = 0.0;
+    tke[a] = dtke[a] = mass_yield[a] = 0.0;
     charge_first[a] = 0;
     for(int z=0 ; z<ffp->ncharge; z++) charge_dist[a][z] = 0.0;
   }
@@ -513,7 +641,7 @@ void FFPDeleteAllocated(FissionFragmentPair *ffp)
 {
   delete [] tke;
   delete [] dtke;
-  delete [] chain_yield;
+  delete [] mass_yield;
 
   for(int a=0 ; a<ffp->nmass; a++) delete [] charge_dist[a];
   delete [] charge_dist;
@@ -545,9 +673,9 @@ void FFPDebug(unsigned char id, FissionFragmentPair *ffp)
   if(id & DEBUG_MASS){
     double s = 0.0;
     for(int i=0 ; i<ffp->nmass ; i++){
-      s += chain_yield[i];
+      s += mass_yield[i];
       cout << setw(5) << i + ffp->mass_first;
-      cout << setw(14) << chain_yield[i];
+      cout << setw(14) << mass_yield[i];
       cout << setw(14) << s << endl;
     }
   }
@@ -609,6 +737,7 @@ void FFPDebug(unsigned char id, FissionFragmentPair *ffp)
       cout << setw(14) << ffp->fragment[k].qval;
       cout << setw(14) << ffp->fragment[k].ek;
       cout << setw(14) << ffp->fragment[k].ex;
+      cout << setw(14) << ffp->fragment[k].sigma;
       cout << setw(14) << ffp->fragment[k].yield;
       cout << setw(14) << s << endl;
     }
@@ -618,6 +747,7 @@ void FFPDebug(unsigned char id, FissionFragmentPair *ffp)
   if(id & DEBUG_ATKE){
     for(int al=almin ; al<=almax ; al++){
       double tke0 = tke[al - ffp->mass_first];
+      if(tke0 == 0.0) continue;
 
       double t = 0.0, w = 0.0, y = 0.0;
       for(int k=0 ; k<ffp->getN() ; k++){
@@ -637,6 +767,46 @@ void FFPDebug(unsigned char id, FissionFragmentPair *ffp)
       cout << setw(14) << t;
       cout << setw(14) << t/tke0;
       cout << setw(14) << w << endl;
+    }
+  }
+
+  /* lung plot */
+  if(id & DEBUG_LUNG){
+
+    int tmax = 250;
+    int tmin = 100;
+    double *b0 = new double [tmax - tmin + 1];
+    double *b1 = new double [tmax - tmin + 1];
+
+    for(int al=almin ; al<=almax ; al++){
+      for(int t=0 ; t<=tmax-tmin ; t++) b0[t] = 0.0;
+
+      for(int k=0 ; k<ffp->getN() ; k++){
+        if(ffp->fragment[k].getAl() != (unsigned int)al) continue;
+        if(ffp->fragment[k].yield == 0.0) continue;
+
+        for(int t=0 ; t<=tmax-tmin; t++) b1[t] = 0.0;
+        double s = 0.0;
+        for(int t=0 ; t<=tmax-tmin ; t++){
+          double tx = t + tmin + 0.5;
+          double x1 = ffp->fragment[k].ek - tx;
+          double x2 = ffp->fragment[k].sigma * ffp->fragment[k].sigma * 2.0;
+          b1[t] = exp( - x1 * x1 / x2 );
+          s += b1[t];
+        }
+        if(s > 0.0){
+          s = ffp->fragment[k].yield / s;
+          for(int t=0 ; t<=tmax-tmin ; t++) b0[t] += s * b1[t];
+        }
+      }
+
+      for(int t=0 ; t<=tmax-tmin ; t++){
+        cout << setw(5)  << al;
+        cout << setw(5)  << ffp->af - al;
+        cout << setw(5)  << t + tmin;
+        cout << setw(14) << b0[t] << endl;;
+      }
+      cout << endl;
     }
   }
 }

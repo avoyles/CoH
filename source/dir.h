@@ -1,7 +1,4 @@
-/*
-   dir.h : 
-        code configuration and data location
- */
+// code configuration and data location
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -36,4 +33,10 @@
 /**************************************/
 
 #define FRDMDATAFILE "nucshape.dat"
+
+/**************************************/
+/*      fission parameter directory   */
+/**************************************/
+
+#define PARAMETERSDIRECTORY "ffpparm/"
 

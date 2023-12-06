@@ -1,7 +1,4 @@
-/*
-   global.h : 
-        global variables, data output and calculation flow control
- */
+// global variables, data output and calculation flow control
 
 /**************************************/
 /*      Output Control                */
@@ -18,6 +15,8 @@
 #define PRN_ANGDIST      0x0080    //  128
 #define PRN_PREEQPARM    0x0100    //  256
 #define PRN_SMATRIX      0x0200    //  512
+#define PRN_MCHISTORY    0x0400    // 1024
+#define PRN_FISENERGY    0x0800    // 2048
 
 /*** non-standard output */
 #define PEX_GBRANCH      0x0001    //    1
@@ -28,20 +27,23 @@
 #define PEX_PTABLE       0x0020    //   32
 #define PEX_GAMMALINE    0x0040    //   64
 #define PEX_DECAYWIDTH   0x0080    //  128
+#define PEX_GAMMASTF     0x0100    //  256
 
 
 class GlobalPrint{
  public:
-  bool system         ;            // print out system parameters
-  bool xsection       ;            // print cross sections
-  bool spectra        ;            // print particle energy spectra
-  bool levelexcite    ;            // print discrete level population
-  bool gcascade       ;            // print gamma-ray cascading
-  bool population     ;            // print internal populations
-  bool transmission   ;            // print transmission coefficients
-  bool angdist        ;            // print angular distributions
-  bool preeqparm      ;            // print pre-compound parameters
-  bool smatrix        ;            // print scattering matrix elements
+  bool system;                     // print out system parameters
+  bool xsection;                   // print cross sections
+  bool spectra;                    // print particle energy spectra
+  bool levelexcite;                // print discrete level population
+  bool gcascade;                   // print gamma-ray cascading
+  bool population;                 // print internal populations
+  bool transmission;               // print transmission coefficients
+  bool angdist;                    // print angular distributions
+  bool preeqparm;                  // print pre-compound parameters
+  bool smatrix;                    // print scattering matrix elements
+  bool mchistory;                  // print Monte Carlo history
+  bool fisenergy;                  // print fission energy table
 
   GlobalPrint(){
     system       = false;
@@ -54,20 +56,23 @@ class GlobalPrint{
     angdist      = false;
     preeqparm    = false;
     smatrix      = false;
+    mchistory    = false;
+    fisenergy    = false;
   }
 };
 
 
 class GlobalPrintExt{
  public:
-  bool gbranch        ;            // print gamma-ray branching ratios
-  bool cumulevel      ;            // print cumulative levels
-  bool density        ;            // print level density
-  bool fisdensity     ;            // print fission level density
-  bool ddx            ;            // print DDX data for ENDF6 formatting
-  bool ptable         ;            // print decay probability matrix
-  bool gammaline      ;            // print all line gammas
-  bool decaywidth     ;            // print compound nucleus channel decay width
+  bool gbranch;                    // print gamma-ray branching ratios
+  bool cumulevel;                  // print cumulative levels
+  bool density;                    // print level density
+  bool fisdensity;                 // print fission level density
+  bool ddx;                        // print DDX data for ENDF6 formatting
+  bool ptable;                     // print decay probability matrix
+  bool gammaline;                  // print all line gammas
+  bool decaywidth;                 // print compound nucleus channel decay width
+  bool gammastf;                   // print gamma-ray strength function
 
   GlobalPrintExt(){
     gbranch      = false;
@@ -78,26 +83,27 @@ class GlobalPrintExt{
     ptable       = false;
     gammaline    = false;
     decaywidth   = false;
+    gammastf     = false;
   }
 };
 
 
 class GlobalPrintMFT{
  public:
-  bool system         ;            // print system parameters
-  bool potential      ;            // print potential on 3D mesh
-  bool spstate        ;            // print single-particle spectrum
-  bool shiftedstate   ;            // print BCS shifted single-particle states
-  bool bcs            ;            // print BCS parameters
-  bool energy         ;            // print calculated energies
-  bool expansion      ;            // print spherical expansion coefficients
-  bool deformation    ;            // print deformation parameters
-  bool HFmonitor      ;            // print HF iteration monitor
-  bool HFdensity      ;            // print nuclear density on 3D mesh
-  bool FRDMbeta       ;            // print spherical harmonics expansion
-  bool FRDMzero       ;            // calculate zero-point energy
-  bool FRDMshape      ;            // output nuclear shape on file
-  bool FRDMfileout    ;            // output internal parameters on file
+  bool system;                     // print system parameters
+  bool potential;                  // print potential on 3D mesh
+  bool spstate;                    // print single-particle spectrum
+  bool shiftedstate;               // print BCS shifted single-particle states
+  bool bcs;                        // print BCS parameters
+  bool energy;                     // print calculated energies
+  bool expansion;                  // print spherical expansion coefficients
+  bool deformation;                // print deformation parameters
+  bool HFmonitor;                  // print HF iteration monitor
+  bool HFdensity;                  // print nuclear density on 3D mesh
+  bool FRDMbeta;                   // print spherical harmonics expansion
+  bool FRDMzero;                   // calculate zero-point energy
+  bool FRDMshape;                  // output nuclear shape on file
+  bool FRDMfileout;                // output internal parameters on file
 
 
   GlobalPrintMFT(){
@@ -142,26 +148,26 @@ class GlobalPrintMFT{
 
 class GlobalControl{
  public:
-  bool entrance       ;            // this is entrance channel calculation
-  bool deformed       ;            // target is deformed
-  bool exciton        ;            // include exciton model
-  bool dwba           ;            // include DWBA calculation
-  bool dsd            ;            // include DSD model
-  bool fluctuation    ;            // include width fluctuation
-  bool ewtransform    ;            // Engelbrecht-Weidenmueller transformation
-  bool statmodel      ;            // include statistical model
-  bool fission        ;            // perform fission calculation
-  bool montecarlo     ;            // do Monte Carlo simulation 
-  bool fileout        ;            // write cross sections on a file
-  bool superlazy      ;            // super-lazy mode for quick calculation
-  bool exclusive      ;            // exclusive particle spectra calculation
-  bool ddx            ;            // double differential spectra
-  bool fns            ;            // fission neutron spectra
-  bool macs           ;            // maxwellian average cross section
-  bool meanfield      ;            // mean-field theory
-  bool hartreefock    ;            // Hartree-Fock calculation
-  bool frdm           ;            // finite-range droplet model
-  bool expansion      ;            // HF/FRDM s.p. state expansion
+  bool entrance;                   // this is entrance channel calculation
+  bool deformed;                   // target is deformed
+  bool exciton;                    // include exciton model
+  bool dwba;                       // include DWBA calculation
+  bool dsd;                        // include DSD model
+  bool fluctuation;                // include width fluctuation
+  bool ewtransform;                // Engelbrecht-Weidenmueller transformation
+  bool statmodel;                  // include statistical model
+  bool fission;                    // perform fission calculation
+  bool montecarlo;                 // do Monte Carlo simulation 
+  bool fileout;                    // write cross sections on a file
+  bool superlazy;                  // super-lazy mode for quick calculation
+  bool exclusive;                  // exclusive particle spectra calculation
+  bool ddx;                        // double differential spectra
+  bool fns;                        // fission neutron spectra
+  bool macs;                       // maxwellian average cross section
+  bool meanfield;                  // mean-field theory
+  bool hartreefock;                // Hartree-Fock calculation
+  bool frdm;                       // finite-range droplet model
+  bool expansion;                  // HF/FRDM s.p. state expansion
 
   GlobalControl(){
     entrance       = false;
@@ -193,18 +199,24 @@ class GlobalControl{
 /**************************************/
 class GlobalOption{
  public:
-  bool ewtransformation   ;    // Engelbrecht-Weidenmueller transformation
-  bool internalconversion ;    // disclete gamma-ray internal conversion
-  bool readdensity        ;    // read level density table in a current directory
-  bool groundstateomp     ;    // use G.S. omp for excitated states
-  bool chargediscrete     ;    // explicit charged particle discrete transisions
+  bool ewtransformation;       // Engelbrecht-Weidenmueller transformation
+  bool internalconversion;     // disclete gamma-ray internal conversion
+  bool readdensity;            // read level density table in the current directory
+  bool readphotoabsorption;    // read tabulated photo-absorption in the current directory
+  bool groundstateomp;         // use G.S. omp for excitated states
+  bool chargediscrete;         // explicit charged particle discrete transisions
+  bool finegammaspectrum;      // gamma line mapped onto a finer energy grid
+  bool continuumangdist;       // angular distributions in continuum
 
   GlobalOption(){
     ewtransformation    = false;
     internalconversion  = false;
     readdensity         = false;
+    readphotoabsorption = false;
     groundstateomp      = false;
     chargediscrete      = false;
+    finegammaspectrum   = false;
+    continuumangdist    = false;
   }
 };
 

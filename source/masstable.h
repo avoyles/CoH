@@ -1,8 +1,5 @@
-/*
-   masstable.h : 
-        define mass excess data file location
-        prototype of function to read mass table
- */
+// define mass excess data file location
+// function to read mass table
 
 class MassExcess{
  public:

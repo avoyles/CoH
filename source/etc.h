@@ -1,8 +1,4 @@
-/*
-   etc.h :
-        prototype of miscellaneous functions
-        complex variable manipulation carried over from old C code
-*/
+// miscellaneous functions, complex variable manipulation carried over from old C code
 
 #ifndef __COMPLEX_H__
 #define __COMPLEX_H__

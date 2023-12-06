@@ -1,8 +1,5 @@
-/*
-   statmodel.h : 
-        definition of transmission data array
-        prototype of functions for statistical model calculations
- */
+// definition of transmission data array
+// functions for statistical model calculations
 
 /*** spin int / half-int distinction */
 static inline double halfint(double x)
@@ -32,13 +29,13 @@ typedef enum {sumall=0, wfactor=1, hauser=2, fluctuation=3} Statcalcmode;
 /**************************************/
 class Transmission{
  private:
-  int       jsize          ;     /* size of Tj array       */
-  bool      allocated      ;
+  int       jsize;            // size of Tj array
+  bool      allocated;
  public:
-  int       lmax           ;     /* max L                  */
-  double    ecms           ;     /* cms energy             */
-  double    sigr           ;     /* reaction cross section */
-  double   *tran           ;     /* Tj [l+s][l][l-s]       */
+  int       lmax;            // max L
+  double    ecms;            // cms energy
+  double    sigr;            // reaction cross section
+  double   *tran;            // Tj [l+s][l][l-s]
 
   Transmission(){
     lmax = 0;
@@ -84,16 +81,16 @@ class Transmission{
 /**************************************/
 class Spectra{
  private:
-  int       csize          ;     /* number of channels     */
-  int       nsize          ;     /* number of energy bins  */
-  int       lsize          ;     /* number of levels       */
-  bool      allocated      ;
+  int       csize;            // number of channels
+  int       nsize;            // number of energy bins
+  int       lsize;            // number of discrete levels
+  bool      allocated;
  public:
-  double   **pe            ;     /* preequilibrium         */
-  double   **cn            ;     /* from compound decay    */
-  double   **dp            ;     /* population increment   */
-  double   *pg[2]          ;     /* primary gamma-ray      */
-  int      npg             ;     /* number of PG lines     */
+  double   **pe;              // preequilibrium spectrum
+  double   **cn;              // spectrum from compound decay
+  double   **dp;              // population increment
+  double   *pg[2];            // primary gamma-ray
+  int      npg;               // number of PG lines
 
   Spectra(){
     allocated = false;
@@ -121,6 +118,7 @@ class Spectra{
         cn[j] = new double [nsize];
         dp[j] = new double [nsize];
       }
+
       allocated = true;
     }
   }
@@ -180,19 +178,14 @@ class Spectra{
 
 
 /**************************************/
-/*      Gamma-ray Multipolality       */
-/**************************************/
-typedef enum {SL, GL, ML}                   GammaProfile;
-typedef enum {E1=0, M1=1, E2=2, M2=3, E3=4} GammaMultipol;
-
-
-/**************************************/
 /*      statparm.cpp                  */
 /**************************************/
 int     statSetupEnergyBin              (Nucleus *);
-double  statBinWidth                    (double);
+double  statBinWidth                    (const double);
 void    statSetupLevelDensity           (Nucleus *, LevelDensity *);
-void    statSetupGdrParameter           (Nucleus *, double, GDR *, double);
+void    statSetupGdrParameter           (Nucleus *, GDR *, const double);
+void    statSetupGdrSystematics         (Nucleus *, const double);
+void    statSetupResetGdrParameter      (const int, Nucleus *);
 void    statSetupFissionParameter       (Fission *);
 
 
@@ -239,15 +232,17 @@ void    statSetupFissionLevelDensity    (Nucleus *, Fission *);
 /**************************************/
 /*      stattrans.cpp                 */
 /**************************************/
-void    statStoreContinuumTransmission  (int, double, Pdata *, Transmission **);
-void    statStoreDiscreteTransmission   (int, double, Pdata *, Transmission **);
-void    statStoreGammaTransmission      (int, double **, Nucleus *);
+void    statStoreContinuumTransmission  (const int, const double, Pdata *, Transmission **);
+void    statStoreDiscreteTransmission   (const int, const double, Pdata *, Transmission **);
+void    statStoreContinuumGammaTransmission (const int, double **, Nucleus *);
+void    statStoreDiscreteGammaTransmission (const double, double *, Nucleus *);
 
 
 /**************************************/
 /*      popinit.cpp                   */
 /**************************************/
-void    statStoreInitPopulation         (int, int, int, double, Transmission *);
+double  statStoreInitPopulation         (const int, const int, const int, const double, Transmission *);
+double  statStoreInitPopulationPhoton   (const int, const int, const double, Transmission *);
 void    statAdjustInitPopulation        (double);
 
 
@@ -255,12 +250,18 @@ void    statAdjustInitPopulation        (double);
 /*      gtrans.cpp                    */
 /**************************************/
 void    gdrM1norm                       (double, double, GDR *);
-void    gdrParameterSave                (GDR *);
+void    gdrParameterSave                (GDR *, const unsigned int);
 void    gdrParameterReset               ();
-void    gdrDropletGammaSave             (double);
-double  gdrGammaTransmission            (GammaProfile, GammaMultipol, double, 
-                                         double, double);
+double  gdrGammaTransmission            (GammaMultipolarity, double, double, double);
 double  gdrRenormE1StrengthFunction     (int, int, int, double, double, Nucleus *, double **);
+
+
+/**************************************/
+/*      gtransread.cpp                */
+/**************************************/
+void    gdrAbsorptionDataRead           ();
+double  gdrGammaTransmissionInterpolate (GammaMultipolarity, const double);
+int     gdrAbsorptionDataYsize          ();
 
 
 /**************************************/
@@ -280,6 +281,9 @@ int     specFindEnergyBin               (double, double);
 void    specCumulativeSpectra           (const int, const int, double  **, Nucleus *);
 void    specGaussianBroadening          (const int, const double, const double, double *);
 void    specGaussianBroadening          (const int, const double, const double, double *, const double, const double);
+int     specStorePrimaryGamma           (Nucleus *, double **, GammaProduction *);
+int     specStoreDiscreteGamma          (Nucleus *, GammaProduction *);
+void    specSortDiscreteGamma           (GammaProduction *);
 
 
 /**************************************/
@@ -315,6 +319,12 @@ void    statReadFissionLevelDensity     (Nucleus *);
 
 
 /**************************************/
+/*      statreadphotoabsorption.cpp   */
+/**************************************/
+void    statReadPhotoAbsorption         (const int, const int, double **);
+
+
+/**************************************/
 /*      gampop.cpp                    */
 /**************************************/
 double  specTransitionGamma             (Statcalcmode, int, int, int, double **,
@@ -343,8 +353,8 @@ double  specLevelTransitionParticle     (Statcalcmode, int, int, int, int,
 /**************************************/
 /*      parleg.cpp                    */
 /**************************************/
-void    specLegendreCoefficient         (int, int, int, double, int, int, int, int,
-                                         Transmission **);
+void    specLegendreCoefficient         (const int, const int, const int, const double, const int, const int, const int, const int, Transmission **);
+void    specLegendreCoefficientContinuum(const double, const int, const int, const int, const int, Transmission **, double ***);
 int     statInelAngularDistribution     (int, int, Transmission *);
 int     statAngularDistribution         (int, int, Transmission *);
 
@@ -402,6 +412,7 @@ int     dsdDirectCaptureModel           (int, double, Pdata *, ZAnumber *,
 /**************************************/
 /*      photoabs.cpp                  */
 /**************************************/
-double  photoAbsorption                 (double, double, int, Nucleus *, Transmission *, GDR *);
-double  photoQDratio                    ();
+double  photoAbsorption (const int, const int, const double, const double, Nucleus *, Transmission *);
+double  photoQDratio ();
+
 

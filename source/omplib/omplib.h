@@ -18,6 +18,7 @@ unsigned int OMPLemos(                               int, int, Optical *);
 unsigned int OMPNolte(                     int, int, int, int, Optical *);
 unsigned int OMPAvrigeanu(         double, int, int, int, int, Optical *);
 unsigned int OMPAvrigeanu2009(     double, int, int, int, int, Optical *);
+unsigned int OMPAvrigeanu2014(     double, int, int, int, int, Optical *);
 unsigned int OMPTALYS_alpha(       double, int, int, int, int, Optical *);
 unsigned int OMPBojowald(          double, int, int, int, int, Optical *);
 unsigned int OMPAnHaixia(                  int, int, int, int, Optical *);
@@ -40,6 +41,11 @@ unsigned int OMPYoung_Re(          double, int, int,           Optical *);
 unsigned int OMPModSoukhovitskii(  double, int, int, int,      Optical *);
 unsigned int OMPSoukhovitskii2005( double, int, int, int,      Optical *);
 unsigned int OMPDave1p(                    int, int,           Optical *);
+unsigned int OMPWLH1(              double, int, int, int, int, Optical *);
+unsigned int OMPWLH2(              double, int, int, int, int, Optical *);
+unsigned int OMPWLH3(              double, int, int, int, int, Optical *);
+unsigned int OMPWLH4(              double, int, int, int, int, Optical *);
+unsigned int OMPWLH5(              double, int, int, int, int, Optical *);
 
 
 

@@ -14,7 +14,7 @@ using namespace std;
 
 static void FFPOutputMultiplicity (double, double *, double *, double *, double, double);
 static void FFPOutputPnu (const int, double *);
-static void FFPOutputYield (const int, double *, double *, double **, double **);
+static void FFPOutputYield (const int, double *, double *, double **, double **, double *);
 static void FFPOutputnuTKE (const int, double *);
 static void FFPOutputSpectrum (const int, const int, const double, const double, double **, double *);
 static void FFPFindARange (FissionFragmentPair *);
@@ -31,24 +31,26 @@ void FFPOutput(const double de, const double dmass, const double maxtemp, Fissio
   /*** independent yields and quantities as a function of mass */
   double ytot = 0.0;
   for(int i=0 ; i<fob->getMsize() ; i++){
-    if(fob->preChainYield[i] > 0.0){
+    if(fob->preMassYield[i] > 0.0){
       for(int p=0 ; p<2 ; p++){
-        fob->multiplicitydist[p][i] /= fob->preChainYield[i];
-        fob->eaveragedist[p][i]     /= fob->preChainYield[i];
+        fob->multiplicitydist[p][i] /= fob->preMassYield[i];
+        fob->eaveragedist[p][i]     /= fob->preMassYield[i];
       }
+      fob->javeragedist[i] /= fob->preMassYield[i];
     }
     else{
       for(int p=0 ; p<2 ; p++){
         fob->multiplicitydist[p][i] = 0.0;
         fob->eaveragedist[p][i]     = 0.0;
       }
+      fob->javeragedist[i] = 0.0;
     }
-    ytot += fob->preChainYield[i];
+    ytot += fob->preMassYield[i];
   }
 
   /*** when mass resolution is given, postY is broadened */
   if(dmass > 0.0){
-    FFPGaussianBroadening(fob->getMsize(),dmass,fob->postChainYield);
+    FFPGaussianBroadening(fob->getMsize(),dmass,fob->postMassYield);
     for(int p=0 ; p<2 ; p++){
       FFPGaussianBroadening(fob->getMsize(),dmass,fob->multiplicitydist[p]);
       FFPGaussianBroadening(fob->getMsize(),dmass,fob->eaveragedist[p]);
@@ -77,7 +79,7 @@ void FFPOutput(const double de, const double dmass, const double maxtemp, Fissio
   FFPOutputPnu(fob->getLsize(),fob->Pn);
 
   /*** print yield, mulitplicity, and average energy distributions */
-  FFPOutputYield(fob->getMsize(),fob->preChainYield,fob->postChainYield,fob->multiplicitydist,fob->eaveragedist);
+  FFPOutputYield(fob->getMsize(),fob->preMassYield,fob->postMassYield,fob->multiplicitydist,fob->eaveragedist,fob->javeragedist);
 
   /*** print photon and neutron spectra */
   FFPOutputSpectrum(beohZeroCut(fob->spectrum[gammaray]),beohZeroCut(fob->chi),de,maxtemp,fob->spectrum,fob->chi);
@@ -258,9 +260,9 @@ void FFPOutputTKEDistribution(const int type, FissionFragmentPair *ffp)
 
 
 /**********************************************************/
-/*      Print Gaussian Parameter and Chain Yield Y(A)     */
+/*      Print Gaussian Parameter and Mass Yield Y(A)      */
 /**********************************************************/
-void FFPOutputChainYield(const int n, const int ac, const int a0, double *s, double *d, double *f)
+void FFPOutputMassYield(const int n, const int ac, const int a0, double *s, double *d, double *f)
 {
   cout.setf(ios::scientific, ios::floatfield);
   cout << setprecision(4);
@@ -389,7 +391,7 @@ void FFPOutputPnu(const int n, double *pnu)
 /**********************************************************/
 /*      Print Average Multiplicity                        */
 /**********************************************************/
-void FFPOutputYield(const int m, double *cy0, double *cy1, double **mult, double **eave)
+void FFPOutputYield(const int m, double *cy0, double *cy1, double **mult, double **eave, double *jave)
 {
   int a0 = 0, a1 = 0;
   for(int a=0 ; a<m ; a++){
@@ -399,8 +401,8 @@ void FFPOutputYield(const int m, double *cy0, double *cy1, double **mult, double
     if((cy0[a] != 0.0) || (cy1[a] != 0.0)){ a1 = a+1 ; break; }
   }
 
-  outSectionHead("INDEPENDENT MASS CHAIN YIELD");
-  cout << "#  A  preY(A)     postY(A)    pg(A)       pn(A)       <Eg>(A)     <En>(A)" << endl;
+  outSectionHead("INDEPENDENT MASS YIELD");
+  cout << "#  A  preY(A)     postY(A)    pg(A)       pn(A)       <Eg>(A)     <En>(A)     pre<J>(A)" << endl;
   for(int a=a0 ; a<=a1 ; a++){
     cout << setw(4) << a;
     outVal(12,cy0[a]);
@@ -408,7 +410,8 @@ void FFPOutputYield(const int m, double *cy0, double *cy1, double **mult, double
     outVal(12,mult[0][a]);
     outVal(12,mult[1][a]);
     outVal(12,eave[0][a]);
-    outVal(12,eave[1][a]); nl();
+    outVal(12,eave[1][a]);
+    outVal(12,jave[a]); nl();
   }
   nl(); nl();
 }

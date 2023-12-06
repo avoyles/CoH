@@ -11,6 +11,7 @@ using namespace std;
 #include "structur.h"
 #include "nucleus.h"
 #include "statmodel.h"
+#include "global.h"
 
 
 /**********************************************************/
@@ -32,8 +33,9 @@ int    specFindEnergyBin(double e, double de)
   /*** To avoid round-off error, a small number is added */
   int k = (int)((e+eps)/de);
   if( (de*k <= (e+eps)) && (e < de*(k+1)) ) return (k);
+  if( fabs(de*k - (e+eps)) < 1e-10 ) return (k);
 
-  cout << " out of range " << k << " " << de*k <<  " " << e << " " << de*(k+1) << endl;
+  cout << " out of range " << k << " " << de*k <<  " " << e << " " << e+eps << " " << de*(k+1) << " " << de*k - (e+eps) << endl;
   return(-1);
 }
 
@@ -128,3 +130,69 @@ void specGaussianBroadening(const int m, const double de, const double dm, doubl
   delete [] y2;
 }
 
+
+/**********************************************************/
+/*      Primary Gamma-Ray Spectra                         */
+/*      -----                                             */
+/*             The primary gamma-ray emission cross       */
+/*             section should be the same as the level    */
+/*             population for the C0=0, K0=0 case         */
+/**********************************************************/
+int     specStorePrimaryGamma(Nucleus *n, double **pg, GammaProduction *gp)
+{
+  int ng = 0;
+
+  /*** copy non-zero production cross section to PG array */
+  for(int i=0 ; i<n->ndisc ; i++){
+    double eg = n->excitation[0] - n->lev[i].energy;
+    if(n->lpop[i] > 0.0){
+      pg[0][ng] = eg;
+      pg[1][ng] = n->lpop[i];
+      ng++;
+    }
+  }
+
+  /*** primary gamma lines distinguished by negative energy */
+  for(int i=0 ; i<ng ; i++) gp->push(n->za,-pg[0][i],pg[1][i]);
+  
+  return gp->getN();
+}
+
+
+/**********************************************************/
+/*      Store Cascading Gamma Lines                       */
+/**********************************************************/
+int specStoreDiscreteGamma(Nucleus *n, GammaProduction *gp)
+{
+  for(int i0=n->ndisc-1 ; i0>0 ; i0--){
+    for(int j=0 ; j<n->lev[i0].ngamma ; j++){
+      int i1 = n->lev[i0].fstate[j];
+
+      /*** discrete gamma-rays including internal conversion factor */
+      double p = n->lev[i0].branch[j] * n->lpop[i0];
+      if(opt.internalconversion) p *= n->lev[i0].gratio[j];
+      gp->push(n->za,n->lev[i0].energy-n->lev[i1].energy,p);
+    }
+  }
+
+  return gp->getN();
+}
+
+
+/**********************************************************/
+/*      Sort Discrete Gamma Lines                         */
+/**********************************************************/
+void specSortDiscreteGamma(GammaProduction *gp)
+{
+  GammaLine tmp;
+
+  for(int j=0 ; j<gp->getN() ; j++){
+    int l = j;
+    for(int i=j ; i<gp->getN() ; i++){
+      if(gp->line[i].energy < gp->line[l].energy) l = i;
+    }
+    tmp = gp->line[j];
+    gp->line[j] = gp->line[l];
+    gp->line[l] = tmp;
+  }
+}

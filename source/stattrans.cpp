@@ -3,6 +3,7 @@
 /*        set-up transmission coefficients                                    */
 /******************************************************************************/
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 
 using namespace std;
@@ -16,22 +17,17 @@ using namespace std;
 #include "masstable.h"
 #include "parameter.h"
 
+static void statStoreGammaTransmission (const double, const double, double *, Nucleus *);
 
 static const double ecms_cutoff = 1e-9; // lowest emission energy 1 meV
 
-//#define ModifiedLorentzian
-//#define StandardLorentzian
-
 #undef DEBUG_TRANS
-#ifdef DEBUG_TRANS
-#include <cstdio>
-#endif
 
 
 /**********************************************************/
 /*      Store Particle Continuum Transmission into Array  */
 /**********************************************************/
-void statStoreContinuumTransmission(int ip, double ex, Pdata *p, Transmission **tc)
+void statStoreContinuumTransmission(const int ip, const double ex, Pdata *p, Transmission **tc)
 {
   CrossSection cx;
 
@@ -63,9 +59,16 @@ void statStoreContinuumTransmission(int ip, double ex, Pdata *p, Transmission **
 
       for(int l=0 ; l<=3*tc[j][k].lmax ; l++) tc[j][k].tran[l] *= f;
 #ifdef DEBUG_TRANS
-      printf("CONT %3d  %3d%3d %5d % 10.5f % 10.5f % 11.4e % 11.4e % 11.4e\n",
-             j,k,id,tc[j][k].lmax,tc[j][k].ecms,ncl[id].excitation[k],
-             tc[j][k].tran[0],tc[j][k].tran[3],tc[j][k].tran[4]);
+      cout << "CONT " << setw(3) << j << setw(3) << k << setw(3) << id;
+      cout << setw(5) << tc[j][k].lmax;
+      cout.setf(ios::fixed, ios::floatfield);
+      cout << setprecision(5) << setw(10) << tc[j][k].ecms;
+      cout << setprecision(5) << setw(10) << ncl[id].excitation[k];
+      cout.setf(ios::scientific, ios::floatfield);
+      cout << setprecision(4) << setw(11) << tc[j][k].tran[0];
+      cout << setprecision(4) << setw(11) << tc[j][k].tran[3];
+      cout << setprecision(4) << setw(11) << tc[j][k].tran[4];
+      cout << setprecision(4) << setw(11) << tc[j][k].tran[7] << endl;
 #endif
     }
 
@@ -78,7 +81,7 @@ void statStoreContinuumTransmission(int ip, double ex, Pdata *p, Transmission **
 /**********************************************************/
 /*      Store Particle Discrete Transmission into Array   */
 /**********************************************************/
-void statStoreDiscreteTransmission(int ip, double ex, Pdata *p, Transmission **td)
+void statStoreDiscreteTransmission(const int ip, const double ex, Pdata *p, Transmission **td)
 {
   CrossSection cx;
 
@@ -106,12 +109,16 @@ void statStoreDiscreteTransmission(int ip, double ex, Pdata *p, Transmission **t
 
       for(int l=0 ; l<=3*td[j][k].lmax ; l++) td[j][k].tran[l] *= f;
 #ifdef DEBUG_TRANS
-      printf("DISC %3d  %3d%3d %5d % 10.5f % 10.5f % 11.4e % 11.4e % 11.4e % 11.4e % 11.4e % 11.4e % 11.4e\n",
-             j,k,id,td[j][k].lmax,td[j][k].ecms,ncl[id].lev[k].energy,
-             td[j][k].tran[0],
-             td[j][k].tran[3],td[j][k].tran[4],
-             td[j][k].tran[6],td[j][k].tran[7],
-             td[j][k].tran[9],td[j][k].tran[10]);
+      cout << "DISC " << setw(3) << j << setw(3) << k << setw(3) << id;
+      cout << setw(5) << td[j][k].lmax;
+      cout.setf(ios::fixed, ios::floatfield);
+      cout << setprecision(5) << setw(10) << td[j][k].ecms;
+      cout << setprecision(5) << setw(10) << ncl[id].lev[k].energy;
+      cout.setf(ios::scientific, ios::floatfield);
+      cout << setprecision(4) << setw(11) << td[j][k].tran[0];
+      cout << setprecision(4) << setw(11) << td[j][k].tran[3];
+      cout << setprecision(4) << setw(11) << td[j][k].tran[6];
+      cout << setprecision(4) << setw(11) << td[j][k].tran[7] << endl;
 #endif
     }
   }
@@ -121,17 +128,20 @@ void statStoreDiscreteTransmission(int ip, double ex, Pdata *p, Transmission **t
 /**********************************************************/
 /*  Store Gamma-ray Transmissions into 2-dim Array        */
 /**********************************************************/
-void statStoreGammaTransmission(int k0, double **tg, Nucleus *n)
+void statStoreContinuumGammaTransmission(const int k0, double **tg, Nucleus *n)
 {
+  /*** once copy GDR parameters into the gtrans.cpp scope */
+  if(k0 == 0) gdrParameterSave(n->gdr,n->za.getA());
+
   /*** Clear transmission array */
-  for(int i=0 ; i<MAX_MULTIPOL ; i++){
-    for(int k=0 ; k<MAX_ENERGY_BIN ; k++) tg[i][k] = 0.0;
+  for(int k=0 ; k<MAX_ENERGY_BIN ; k++){
+    for(int i=0 ; i<MAX_MULTIPOL ; i++) tg[k][i] = 0.0;
   }
 
   /*** Neutron separation energy for temperature dependent Gamma */
   double sn = 0.0;
   for(int id=1 ; id<MAX_CHANNEL ; id++){
-    if( n->cdt[id].pid == neutron ) sn = n->cdt[id].binding_energy;
+    if( n->cdt[id].pid == neutron ){ sn = n->cdt[id].binding_energy; break; }
   }
   if(sn == 0.0){
     bool checkmass = true;
@@ -139,31 +149,56 @@ void statStoreGammaTransmission(int k0, double **tg, Nucleus *n)
     sn = (checkmass) ? mx - n->mass_excess + ENEUTRON : 0.0;
   }
 
-  for(int k1=k0+1 ; k1<n->ncont ; k1++){
+  for(int k1=k0+1 ; k1<n->ntotal ; k1++){
     double eg = n->excitation[k0] - n->excitation[k1];
-    double ex = (eg <= sn) ? sn - eg : 0.0;
-    double a  = ldDensityParameter(ex,(double)n->za.getA(),&n->ldp);
+    statStoreGammaTransmission(eg,sn,tg[k1],n);
+  }
+}
 
-#ifdef ModifiedLorentzian
-    tg[E1][k1] = gdrGammaTransmission(ML,E1,eg,a  ,ex );
-#elif defined StandardLorentzian
-    tg[E1][k1] = gdrGammaTransmission(SL,E1,eg,a  ,ex );
-#else
-    tg[E1][k1] = gdrGammaTransmission(GL,E1,eg,a  ,ex );
-#endif
-    tg[M1][k1] = gdrGammaTransmission(SL,M1,eg,0.0,0.0);
-    tg[E2][k1] = gdrGammaTransmission(SL,E2,eg,0.0,0.0);
-    tg[M2][k1] = gdrGammaTransmission(SL,M2,eg,0.0,0.0);
-    tg[E3][k1] = gdrGammaTransmission(SL,E3,eg,0.0,0.0);
+
+/**********************************************************/
+/*  Store Gamma-ray Transmissions into 1-dim Array        */
+/**********************************************************/
+void statStoreDiscreteGammaTransmission(const double eg, double *tg, Nucleus *n)
+{
+  /*** Clear transmission array */
+  for(int i=0 ; i<MAX_MULTIPOL ; i++) tg[i] = 0.0;
+
+  double sn = 0.0;
+  for(int id=1 ; id<MAX_CHANNEL ; id++){
+    if( n->cdt[id].pid == neutron ){ sn = n->cdt[id].binding_energy; break; }
+  }
+  if(sn == 0.0){
+    bool checkmass = true;
+    double mx = mass_excess(n->za.getZ(),n->za.getA()-1,&checkmass);
+    sn = (checkmass) ? mx - n->mass_excess + ENEUTRON : 0.0;
+  }
+  statStoreGammaTransmission(eg,sn,tg,n);
+}
+
+
+/**********************************************************/
+/*  Calculate Gamma-ray Transmissions                     */
+/**********************************************************/
+void statStoreGammaTransmission(const double eg, const double sn, double *tg, Nucleus *n)
+{
+  double ex = (eg <= sn) ? sn - eg : 0.0;
+  double a  = ldDensityParameter(ex,(double)n->za.getA(),&n->ldp);
+
+  for(int m=0 ; m<MAX_MULTIPOL ; m++){
+    if(m == E1) tg[m] = gdrGammaTransmission((GammaMultipolarity)m,eg,a  ,ex );
+    else        tg[m] = gdrGammaTransmission((GammaMultipolarity)m,eg,0.0,0.0);
+  }
 
 #ifdef DEBUG_TRANS
-    if(k0 == 0){
-      printf(" %3d %10.6f %10.6f %10.6f %11.4e %11.4e %11.4e\n",
-           k1,eg,ex, ((ex < 0.0) ? 0.0 : sqrt(ex/a)),
-           tg[E1][k1]/(PI2*pow(eg,3.0)),
-           tg[M1][k1]/(PI2*pow(eg,3.0)),
-           tg[E2][k1]/(PI2*pow(eg,5.0)));
-    }
+  cout << "GAMMA ";
+  cout.setf(ios::fixed, ios::floatfield);
+  cout << setprecision(5) << setw(10) << eg;
+  cout << setprecision(5) << setw(10) << ex;
+  cout.setf(ios::scientific, ios::floatfield);
+  cout << setprecision(4) << setw(11) << tg[E1]/(PI2*pow(eg,3.0));
+  cout << setprecision(4) << setw(11) << tg[M1]/(PI2*pow(eg,3.0));
+  cout << setprecision(4) << setw(11) << tg[E2]/(PI2*pow(eg,5.0)) << endl;
 #endif
-  }
+
 }

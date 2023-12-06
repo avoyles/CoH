@@ -14,22 +14,26 @@ using namespace std;
 #include "nucleus.h"
 #include "masstable.h"
 #include "beta2.h"
+#include "global.h"
+#include "terminate.h"
 
 #define CALC_MONITOR
 
 static bool PRINT_INDIV_RESULT        = false;
 static bool PRINT_INDIV_SPEC          = false;
 static bool PRINT_INDIV_CHI           = false;
+static bool PRINT_INDIV_GAMMACASCADE  = false;
+static bool PRINT_INDIV_GAMMALINE     = false;
 
+static bool   FFPSelectZA (const unsigned int, const unsigned int, ZAPair, FFragData *);
 static void   FFPMultiChanceYield (const int, const int);
 static int    FFPMultiChanceFindIndex (const int, const int, const int, char *);
 static int    FFPMultiChanceFindIndexL (const int, const int);
 static int    FFPMultiChanceFindIndexH (const int, const int);
-static void   FFPSetExcitationEnergy (const int, BData *, BData *, FissionFragmentPair *, const double);
+static void   FFPSetExcitationEnergy (const int, BData *, BData *, FissionFragmentPair *, double *);
 
-
-static void   FFPSplitCalc1 (const int, const int, System *, System *, BData *, BData *, FFragData *, Pdata *);
-static void   FFPSplitCalc2 (const int, System *, System *, BData *, BData *, Pdata *, const double);
+static void   FFPSplitCalc1 (const int, System *, System *, BData *, BData *, FFragData *, Pdata *);
+static void   FFPSplitCalc2 (const int, System *, System *, BData *, BData *, FFragData *, Pdata *);
 static void   FFPPost (const int, System *, BData *, double, FragmentObservable *);
 static void   FFPCombined (void);
 static void   FFPCombinedSpectra (void);
@@ -40,9 +44,11 @@ static void   FFPCalcMonitor (const int, const int, const int, const int, BData 
 
 extern FissionFragmentPair *ffp;
 extern FissionObservable   fob;
+extern GammaProduction     gmlL, gmlH;
 
 static double yieldL = 0.0;
 static double yieldH = 0.0;
+
 
 /**********************************************************/
 /*      For Each Fission Fragment Pair                    */
@@ -80,15 +86,11 @@ void FFPSplit(CalcMode mode, System *sys, FFragData *fdt, const int ompid)
   int ncount = 1;
   for(int k=0 ; k<ffp[0].getN() ; k++){
 
-//    if(ffp[0].fragment[k].getZl() != 37 || ffp[0].fragment[k].getAl() != 98 ) continue; // adhoc
-//    if(ffp[0].fragment[k].getZh() != 53 || ffp[0].fragment[k].getAh() != 141 ) continue; // adhoc
-//    if(ffp[0].fragment[k].getZh() != 52 || ffp[0].fragment[k].getAh() != 140 ) continue; // adhoc
-//    if(ffp[0].fragment[k].getZh() != 52) continue;  // adhoc
-//    if(ffp[0].fragment[k].getAh() != 138) continue;  // adhoc
+    /*** if Z and/or A is selected */
+    if(FFPSelectZA(sys->compound.getZ(),sys->compound.getA(),ffp[0].fragment[k],fdt)) continue;
 
     FFPMultiChanceYield(fdt->getFissionChance(),k);
     if( (yieldL + yieldH)*0.5 <= fdt->ycutoff ) continue;
-
 
     /*** Z,A for each fragment */
     sysL.init();
@@ -107,37 +109,13 @@ void FFPSplit(CalcMode mode, System *sys, FFragData *fdt, const int ompid)
 
     /*** main calculation for each pair */
     if(mode != fissionspec){
-      FFPSplitCalc1(k,fdt->getFissionChance(),&sysL,&sysH,bdtL,bdtH,fdt,pdt);
+      FFPSplitCalc1(k,&sysL,&sysH,bdtL,bdtH,fdt,pdt);
       /*** postprocess for L and H combined quantities */
       FFPCombined();
     }
     else{
-      FFPSplitCalc2(k,&sysL,&sysH,&bdtL[0],&bdtH[0],pdt,fdt->mc[0].rt);
+      FFPSplitCalc2(k,&sysL,&sysH,&bdtL[0],&bdtH[0],fdt,pdt);
       /*** total spectra from L and H */
- /*
-      cout.setf(ios::scientific, ios::floatfield);
-      cout << "#  ";
-      cout << setw(4) << ncount;
-      cout << setw(4) << ffp[0].fragment[k].getZl();
-      cout << setw(4) << ffp[0].fragment[k].getAl();
-      cout << setprecision(5) << setw(14) << yieldL;
-      cout << setw(4) << ffp[0].fragment[k].getZh();
-      cout << setw(4) << ffp[0].fragment[k].getAh();
-      cout << setprecision(5) << setw(14) << yieldH << endl;
-
-      double de = (sys->energy_bin_in == 0.0) ? ENERGY_BIN : sys->energy_bin_in;
-
-      for(int i=0 ; i<fob.getNsize() ; i++){
-        double e = (i > 0)  ? (i - 0.5)*de : 0;
-        cout << setprecision(5);
-        cout << setw(14) << e;
-        cout << setw(14) << fob.L.speclab[i];
-        cout << setw(14) << fob.H.speclab[i] << endl;
-        if(e > 30.0) break;
-      }
-      cout << endl;
-      cout << endl;
-*/
       FFPCombinedSpectra();
     }
 
@@ -148,7 +126,12 @@ void FFPSplit(CalcMode mode, System *sys, FFragData *fdt, const int ompid)
 
     /*** print individual result if needed */
     if(ncl[0].de > 0.0){
-      if(PRINT_INDIV_SPEC) FFPOutputIndividualSpectrum(&ffp[0].fragment[k],fob.getNsize(),ncl[0].de,fob.L.spectrum[neutron],fob.H.spectrum[neutron],fob.spectrum[neutron]);
+      if(PRINT_INDIV_SPEC){
+        
+        FFPOutputIndividualSpectrum(&ffp[0].fragment[k],fob.getNsize(),ncl[0].de,fob.L.spectrum[gammaray],fob.H.spectrum[gammaray],fob.spectrum[gammaray]);
+
+        FFPOutputIndividualSpectrum(&ffp[0].fragment[k],fob.getNsize(),ncl[0].de,fob.L.spectrum[neutron],fob.H.spectrum[neutron],fob.spectrum[neutron]);
+      }
 
       if(PRINT_INDIV_CHI) FFPOutputIndividualSpectrum(&ffp[0].fragment[k],fob.getNsize(),ncl[0].de,fob.L.speclab,fob.H.speclab,fob.chi);
     }
@@ -164,9 +147,44 @@ void FFPSplit(CalcMode mode, System *sys, FFragData *fdt, const int ompid)
     fob.eprefis += nc * fdt->mc[nc].fraction * fdt->mc[nc].eprefis;
   }
 
-
   delete [] bdtL;
   delete [] bdtH;
+}
+
+
+/**********************************************************/
+/*      Selected Fragment Calculation                     */
+/**********************************************************/
+bool FFPSelectZA(const unsigned int zcn, const unsigned int acn, ZAPair frag, FFragData *fdt)
+{
+  bool skip = false;
+  if( (fdt->selectA == 0) && (fdt->selectZ == 0) ) return skip;
+
+  if(fdt->selectA > 0){
+    int asl = fdt->selectA;
+    if(asl > (int)acn / 2) asl = acn - asl;
+
+    /*** both A and Z selected  */
+    if(fdt->selectZ > 0){
+      int zsl = fdt->selectZ;
+      if(zsl > (int)zcn / 2) zsl = zcn - zsl;
+      if(frag.getZl() != (unsigned int)zsl || frag.getAl() != (unsigned int)asl) skip = true;
+    }
+    /*** A selected but Z not */
+    else{
+      if(frag.getAl() != (unsigned int)asl) skip = true;
+    }
+  }
+  /*** only Z selected */
+  else{
+    if(fdt->selectZ > 0){
+      int zsl = fdt->selectZ;
+      if(zsl > (int)zcn / 2) zsl = zcn - zsl;
+      if(frag.getZl() != (unsigned int)zsl) skip = true;
+    }
+  }
+
+  return skip;
 }
 
 
@@ -242,11 +260,26 @@ int FFPMultiChanceFindIndexH(const int c, const int k0)
 /*      Energy integration performed by energy            */
 /*      distribution of initial population                */
 /**********************************************************/
-void FFPSplitCalc1(const int k, const int nc, System *sysL, System *sysH, BData *bdtL, BData *bdtH, FFragData *fdt, Pdata *pdt)
+void FFPSplitCalc1(const int k, System *sysL, System *sysH, BData *bdtL, BData *bdtH, FFragData *fdt, Pdata *pdt)
 {
-  BData bL, bH;
   /*** for the first chance fission */
-  FFPSetExcitationEnergy(k,&bL,&bH,&ffp[0],fdt->mc[0].rt);
+  BData bL, bH;
+  if((ffp[0].fragment[k].el > 0.0) && (ffp[0].fragment[k].eh > 0.0)){
+    /*** when data are given in a file */
+    bL.exmean  = ffp[0].fragment[k].el;
+    bL.exwidth = ffp[0].fragment[k].wl;
+    bH.exmean  = ffp[0].fragment[k].eh;
+    bH.exwidth = ffp[0].fragment[k].wh;
+
+    /*** average kinetic energies */
+    double x = ffp[0].fragment[k].getAl() + ffp[0].fragment[k].getAh();
+    bL.ekmean = ffp[0].fragment[k].ek * ffp[0].fragment[k].getAh() / x;
+    bH.ekmean = ffp[0].fragment[k].ek * ffp[0].fragment[k].getAl() / x;
+  }
+  else{
+    /*** use RT model to calculate energy sharing */
+    FFPSetExcitationEnergy(k,&bL,&bH,&ffp[0],fdt->mc[0].rta);
+  }
   bdtL[0].exmean  = sysL->ex_total = bL.exmean;
   bdtH[0].exmean  = sysH->ex_total = bH.exmean;
   bdtL[0].exwidth = bL.exwidth;
@@ -260,7 +293,8 @@ void FFPSplitCalc1(const int k, const int nc, System *sysL, System *sysH, BData 
 
     /*** find the same ZA in the multi-chance chain */
     int kl = FFPMultiChanceFindIndex(nc,ffp[0].fragment[k].getZl(),ffp[0].fragment[k].getAl(),&z);
-    FFPSetExcitationEnergy(kl,&bL,&bH,&ffp[nc],fdt->mc[nc].rt);
+    FFPSetExcitationEnergy(kl,&bL,&bH,&ffp[nc],fdt->mc[nc].rta);
+
     if(z == 'L'){
       bdtL[nc].exmean  = bL.exmean;  if(bL.exmean > sysL->ex_total) sysL->ex_total = bL.exmean;
       bdtL[nc].exwidth = bL.exwidth;
@@ -273,7 +307,7 @@ void FFPSplitCalc1(const int k, const int nc, System *sysL, System *sysH, BData 
     }
 
     int kh = FFPMultiChanceFindIndex(nc,ffp[0].fragment[k].getZh(),ffp[0].fragment[k].getAh(),&z);
-    FFPSetExcitationEnergy(kh,&bL,&bH,&ffp[nc],fdt->mc[nc].rt);
+    FFPSetExcitationEnergy(kh,&bL,&bH,&ffp[nc],fdt->mc[nc].rta);
     if(z == 'L'){
       bdtH[nc].exmean  = bL.exmean;  if(bL.exmean > sysH->ex_total) sysH->ex_total = bL.exmean;
       bdtH[nc].exwidth = bL.exwidth;
@@ -288,19 +322,31 @@ void FFPSplitCalc1(const int k, const int nc, System *sysL, System *sysH, BData 
 
   /*** exec Hauser-Feshbach for each fragment, post processing, collecting calculated results */
   fob.L.clear();
-  beohFFDecay(nc,sysL,pdt,bdtL,PRINT_INDIV_RESULT);
-  FFPPost(nc,sysL,bdtL,yieldL,&fob.L);
+  gmlL.init();
+  beohFFDecay(fdt->getFissionChance(),sysL,pdt,bdtL,&gmlL,PRINT_INDIV_RESULT);
+  FFPPost(fdt->getFissionChance(),sysL,bdtL,yieldL,&fob.L);
+
+  if(PRINT_INDIV_GAMMACASCADE){
+    for(int i=0 ; i<sysL->max_compound ; i++) outGammaCascade(yieldL,&ncl[i]);
+  }
+  if(PRINT_INDIV_GAMMALINE && opt.finegammaspectrum) outDiscreteGamma(yieldL,&gmlL);
 
   fob.H.clear();
-  beohFFDecay(nc,sysH,pdt,bdtH,PRINT_INDIV_RESULT);
-  FFPPost(nc,sysH,bdtH,yieldH,&fob.H);
+  gmlH.init();
+  beohFFDecay(fdt->getFissionChance(),sysH,pdt,bdtH,&gmlH,PRINT_INDIV_RESULT);
+  FFPPost(fdt->getFissionChance(),sysH,bdtH,yieldH,&fob.H);
+
+  if(PRINT_INDIV_GAMMACASCADE){
+    for(int i=0 ; i<sysH->max_compound ; i++) outGammaCascade(yieldH,&ncl[i]);
+  }
+  if(PRINT_INDIV_GAMMALINE && opt.finegammaspectrum) outDiscreteGamma(yieldH,&gmlH);
 }
 
 
 /**********************************************************/
 /*      Store Average Excitation Energies                 */
 /**********************************************************/
-void FFPSetExcitationEnergy(const int k, BData *bL, BData *bH, FissionFragmentPair *f, const double rt)
+void FFPSetExcitationEnergy(const int k, BData *bL, BData *bH, FissionFragmentPair *f, double *rt)
 {
   if(k < 0){
     bL->exmean = bL->exwidth = bL->ekmean = 0.0;
@@ -314,9 +360,22 @@ void FFPSetExcitationEnergy(const int k, BData *bL, BData *bH, FissionFragmentPa
   cH.setZA(f->fragment[k].getZh(),f->fragment[k].getAh());
 
   /*** energy sorting by the RT model */
-  double eratio = beohExcitationEnergyDivide(&cL,&cH,rt,f->fragment[k].ex);
+  double eratio =0.0;
+  // pull the correct RT values, depending on whether it was written in the file or not
+  if (rt[0] > 0){
+    int ahmin = rt[0];
+    int ahmax = rt[1];
+    int ah = f->fragment[k].getAh();
+    int aind = ah - ahmin;
+    if (aind < 0) aind = ahmax - ahmin;
+    //cout << aind << " and " << rt[2+aind] << endl;
+    eratio = beohExcitationEnergyDivide(&cL,&cH,rt[2+aind],f->fragment[k].ex);
+  } 
+  else {
+    eratio = beohExcitationEnergyDivide(&cL,&cH,rt[2],f->fragment[k].ex);
+  }
 
-  if(eratio > 0.0){
+  if(eratio > 0.0 && f->fragment[k].ex > 0.0){
     bL->exmean = f->fragment[k].ex * eratio;
     bH->exmean = f->fragment[k].ex * (1.0 - eratio);
   }
@@ -327,7 +386,9 @@ void FFPSetExcitationEnergy(const int k, BData *bL, BData *bH, FissionFragmentPa
 
   /*** when dE is given for TXE, divide dE into two fragments */
   if(f->fragment[k].sigma > 0.0){
-    double c = ffp[0].fragment[k].sigma / sqrt(bL->exmean * bL->exmean + bH->exmean * bH->exmean);
+    double d = sqrt(bL->exmean * bL->exmean + bH->exmean * bH->exmean);
+    double c = 0.0;
+    if(d > 0.0) c = ffp[0].fragment[k].sigma / d;
     bL->exwidth = c * bL->exmean;
     bH->exwidth = c * bH->exmean;
   }
@@ -347,10 +408,12 @@ void FFPSetExcitationEnergy(const int k, BData *bL, BData *bH, FissionFragmentPa
 /*      Fragment Pair for Fission Spectrum Calculation    */
 /*      Perform exact energy intergration                 */
 /**********************************************************/
-void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *bdtH, Pdata *pdt, double rt)
+void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *bdtH, FFragData *fdt, Pdata *pdt)
 {
   double *speclab = new double [fob.getNsize()];
   double *tkedist = new double [fob.getKsize()];
+  double *rt = fdt->mc[0].rta;
+  double rtval = 0;
 
   for(int j=0 ; j<fob.getNsize() ; j++){
     fob.L.speclab[j] = fob.H.speclab[j] = speclab[j] = 0.0;
@@ -362,9 +425,22 @@ void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *
   }
 
   /*** determine Jmax for each fragment at the mean energy */
-  FFPSetExcitationEnergy(k,bdtL,bdtH,&ffp[0],rt);
+  FFPSetExcitationEnergy(k,bdtL,bdtH,&ffp[0],fdt->mc[0].rta);
   sysL->ex_total = bdtL->exmean;
   sysH->ex_total = bdtH->exmean;
+
+  // pull the correct RT values, depending on whether it was written in the file or not
+  if (rt[0] > 0){
+    int ahmin = rt[0];
+    int ahmax = rt[1];
+    int ah = ffp[0].fragment[k].getAh();
+    int aind = ah - ahmin;
+    if (aind < 0) aind = ahmax - ahmin;
+    rtval = rt[2+aind];
+  } 
+  else {
+    rtval = rt[2];
+  }
 
   int jmaxL = beohFFDecayPrep(sysL,pdt);
   int jmaxH = beohFFDecayPrep(sysH,pdt);
@@ -394,7 +470,7 @@ void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *
 //  if(tke < 100.0 || tke > 120.0) continue; // adhoc
 
     /*** divide TKE and TXE into two fragments */
-    double eratio = beohExcitationEnergyDivide(&sysL->compound,&sysH->compound,rt,txe);
+    double eratio = beohExcitationEnergyDivide(&sysL->compound,&sysH->compound,rtval,txe);
     bdtL->exmean = txe * eratio;
     bdtH->exmean = txe * (1.0 - eratio);
 
@@ -402,7 +478,7 @@ void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *
     bdtH->ekmean = tke * sysL->compound.getA() / (sysL->compound.getA() + sysH->compound.getA());
 
     /*** statistical decay calculation and postprocessing for the light fragment */
-    beohFFDecaySpec(sysL,pdt,bdtL,jmaxL,fob.getNsize(),speclab);
+    beohFFDecaySpec(sysL,pdt,bdtL,&gmlL,jmaxL,fob.getNsize(),speclab);
     beohAverageEnergy(MAX_ENERGY_BIN,fob.L.multiplicity,fob.L.eaverage,fob.L.etotal,crx.spectra);
     for(int j=0 ; j<fob.getNsize() ; j++){
       for(int p=0 ; p<2 ; p++) fob.L.spectrum[p][j] += crx.spectra[p][j] * tkedist[i];
@@ -410,7 +486,7 @@ void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *
     }
 
     /*** statistical decay calculation and postprocessing for the heavy fragment */
-    beohFFDecaySpec(sysH,pdt,bdtH,jmaxH,fob.getNsize(),speclab);
+    beohFFDecaySpec(sysH,pdt,bdtH,&gmlH,jmaxH,fob.getNsize(),speclab);
     beohAverageEnergy(MAX_ENERGY_BIN,fob.H.multiplicity,fob.H.eaverage,fob.H.etotal,crx.spectra);
     for(int j=0 ; j<fob.getNsize() ; j++){
       for(int p=0 ; p<2 ; p++) fob.H.spectrum[p][j] += crx.spectra[p][j] * tkedist[i];
@@ -439,7 +515,6 @@ void FFPSplitCalc2(const int k, System *sysL, System *sysH, BData *bdtL, BData *
   delete [] speclab;
   delete [] tkedist;
 }
-
 
 
 /**********************************************************/
@@ -473,16 +548,19 @@ void FFPPost(const int nc, System *sys, BData *bdt, const double yield, Fragment
     fob.eaveragedist[p][sys->compound.getA()]     += yield * fo->eaverage[p];
   }
 
-  /*** pre neutron emission chain yield */
-  fob.preChainYield[sys->compound.getA()] += yield;
+  /*** pre neutron emission mass yield */
+  fob.preMassYield[sys->compound.getA()] += yield;
 
-  /*** post neutron emission chain yield */
+  /*** post neutron emission mass yield */
   for(int j=0 ; j<sys->max_compound ; j++){
-    fob.postChainYield[ncl[j].za.getA()] += yield * crx.prod[j].xsec;
+    fob.postMassYield[ncl[j].za.getA()] += yield * crx.prod[j].xsec;
   }
 
   /*** add long-lived isotope productions */
   outPrepCumulativeResidual(sys->max_compound,yield);
+
+  /*** average spin of initial compound */
+  fob.javeragedist[sys->compound.getA()] += yield * bdt[0].averagespin;
 }
 
 
@@ -528,6 +606,21 @@ void FFPCombinedSpectra(void)
     fob.L.speclab[i] *= yieldL;
     fob.H.speclab[i] *= yieldH;
     fob.chi[i]       += fob.L.speclab[i] + fob.H.speclab[i];
+  }
+
+  /*** fine energy grid gamma */
+  if(opt.finegammaspectrum){
+    for(int i=0 ; i<gmlL.getN() ; i++){
+      gml.push(gmlL.line[i].za, gmlL.line[i].energy, gmlL.line[i].production * yieldL);
+    }
+    for(int i=0 ; i<gmlH.getN() ; i++){
+      gml.push(gmlH.line[i].za, gmlH.line[i].energy, gmlH.line[i].production * yieldH);
+    }
+
+    if(gml.getN() == MAX_GAMMALINE){
+      message << "total number of discrete gamma lines exceeded the maximum of " << MAX_GAMMALINE;
+      cohNotice("FFPCombinedSpectra");
+    }
   }
 }
 
@@ -605,4 +698,3 @@ void FFPCalcMonitor(const int m, const int n, const int k, const int nc, BData *
   }
 }
 #endif
-

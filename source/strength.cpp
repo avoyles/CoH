@@ -22,7 +22,7 @@ static double pex = 0.0;
 
 
 /**********************************************************/
-/*      Strength Function calculation                     */
+/*      Strength Function Calculation                     */
 /*         Theory of Neutron Resonance Cross Section for  */
 /*         Safety Applications                            */
 /*                        F.H. Froehner, KfK 5073 (1992)  */
@@ -36,7 +36,7 @@ void omStrengthFunction(int lmax0, int anum, double k2, double ein,
   double rm = stfRadius(anum);
   double a  = rm*sqrt(k2);
  
-  int lmax1 = omExternalFunction(0,a,0.0,0.0,wfn);
+  int lmax1 = omExternalFunction(0,a,0.0,wfn);
   int lmax  = min(MAX_STRENGTH_FUNCTION-1,min(lmax0,lmax1));
 
   b = complex<double>(0.0,0.0);

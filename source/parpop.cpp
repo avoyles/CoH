@@ -32,7 +32,7 @@ double specTransitionParticle
   Nucleus       *n0,               // nucleus information for the parent
   Nucleus       *n1,               // nucleus information for the daughter
   double        *spc,              // particle emission spectra for this channel
-  double        *dlp)              // poplation increment
+  double        *dlp)              // population increment
 {
   double x,y,sum = 0.0;
   int    kp;

@@ -33,7 +33,7 @@ static void dsdCalcHF             (CCdata *, Bstate *, complex<double> *, double
 static bool dsdAmplitudeSpherical (int, int, double *, CCdata *, complex<double> *, Bstate *);
 static bool dsdAmplitudeDeformed  (const int, const int,
                                    int, int, double *, CCdata *, complex<double> *, Bstate *);
-static void dsdSetGDRParameter    (double, double, Dcapt *);
+static void dsdSetGDRParameter    (double, double, GDR *);
 static void dsdSetConstant        (Particle, int, int, Optical *, CCdata *, double);
 static void dsdSpecBroadening     (double *, double *, int, double, double);
 static inline void dsdHOWaveFunction (double, double, Bstate *);
@@ -150,7 +150,7 @@ int     dsdDirectCaptureModel
 //---------------------------------------
 //      GDR parameters
 
-  dsdSetGDRParameter(beta2,(double)targ->getA(),dsd);
+  dsdSetGDRParameter(beta2,(double)targ->getA(),dsd->gdr);
 
 
 //---------------------------------------
@@ -410,7 +410,7 @@ bool    dsdAmplitudeDeformed(const int nlev, const int ip, int l2, int j2, doubl
 /**********************************************************/
 /*      Local GDR Parameters                              */
 /**********************************************************/
-void    dsdSetGDRParameter(double beta2, double targA, Dcapt *dsd)
+void    dsdSetGDRParameter(double beta2, double targA, GDR *gdr)
 {
   /*** for spherical calculation, enforce single humped GDR */
   if(!deformedDSD){
@@ -420,10 +420,10 @@ void    dsdSetGDRParameter(double beta2, double targA, Dcapt *dsd)
   else{
     /*** copy GDR parameter to local variables */
     string XL = "E1";
-    gdr0.setGDR(XL,dsd->gdr[0].getEnergy(),dsd->gdr[0].getWidth(),dsd->gdr[0].getSigma());
+    gdr0.setGDR(XL,gdr[0].getEnergy(),gdr[0].getWidth(),gdr[0].getSigma(),gdr[0].getProfile());
 
-    if(beta2 > 0.0 && dsd->gdr[1].getXL() == XL){
-      gdr1.setGDR(XL,dsd->gdr[1].getEnergy(),dsd->gdr[1].getWidth(),dsd->gdr[1].getSigma());
+    if(beta2 > 0.0 && gdr[1].getXL() == XL){
+      gdr1.setGDR(XL,gdr[1].getEnergy(),gdr[1].getWidth(),gdr[1].getSigma(),gdr[1].getProfile());
     }
     else gdr1.clear();
   }

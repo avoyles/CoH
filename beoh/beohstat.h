@@ -1,8 +1,13 @@
 /**************************************/
 /*      beohspectra.cpp               */
 /**************************************/
-void    beohspectra (System *, Pdata *, Transmission **, Transmission **, double **,  Spectra *);
+void    beohspectra (System *, Pdata *, Transmission **, Transmission **, double **,  Spectra *, GammaProduction *);
 void    beohspectraLAB (System *, Pdata *, Transmission **, Transmission **, double **,  Spectra *, double, double);
+
+/**************************************/
+/*      beohspecmc.cpp                */
+/**************************************/
+void    beohspectraMC (Pdata *, Transmission **, Transmission **, double **,  Spectra *, const unsigned long);
 
 /**************************************/
 /*      beohprofile.cpp               */

@@ -10,6 +10,7 @@ using namespace std;
 
 #include "structur.h"
 #include "eclipse.h"
+#include "global.h"
 #include "mt19937ar.h"
 
 static const int MAX_CASCADE = 100;
@@ -23,7 +24,6 @@ static void  eclMCHistory    (int, int, int *, int *,
 static void  eclMCTally      (const int, const int, int *, unsigned int, double **,
                               unsigned long ***, unsigned long **, unsigned long *, EXSpectra *);
 
-static const bool PRINT_HISTORY  = true;
 static const bool TAG_ON_FISSION = false;
 
 static bool fission_event = false;
@@ -150,7 +150,7 @@ int eclMCSimulation(const int cmax, int *ktot, int **cidx, double de,
     c0 = c1;
     k0 = k1;
 
-    if((mc++) >=MAX_CASCADE){
+    if((mc++) >= MAX_CASCADE){
       cerr << "max cascading exceeded at "<<c0<<" "<<k0<<" "<<c1<<" "<<k1<< endl;
       break;
     }
@@ -189,7 +189,7 @@ void eclMCHistory(int c0, int mc, int *iout, int *kout,
   }
   if(mc > 0) nevt[c0]++;
 
-  if(PRINT_HISTORY){
+  if(prn.mchistory){
     cout << setw(5) << mc <<" : ";
     for(int i=0 ; i<mc ; i++){
       double ep = kout[i] * de;

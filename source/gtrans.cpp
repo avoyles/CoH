@@ -12,10 +12,12 @@ using namespace std;
 #include "structur.h"
 #include "statmodel.h"
 #include "parameter.h"
+#include "global.h"
 
 static double  gdrStandardLorentzian    (int, double, GDR *);
 static double  gdrGeneralizedLorentzian (int, double, GDR *, double, double);
 static double  gdrModifiedLorentzian    (int, double, GDR *, double, double);
+static inline void    gdrDropletGammaSave      (const unsigned int);
 static inline double  gdrProfileLorentzian     (double, double, double);
 static inline double  gdrTempDependGamma       (double, double, double, double);
 static inline double  gdrTempDependGamma2      (double, double, double, double);
@@ -23,8 +25,9 @@ static inline double  gdrGammagSystematics     (int);
 
 static double gStrengthFunction = 1.0;
 static double gDropletGamma = 0.0;
+static const double gStrNormFactor = 1.0 / (HBARSQ * VLIGHTSQ * PI * PI) / NORM_FACT;
 
-static GDR gdr[MAX_GDR];
+static GDR *gdr[MAX_GDR];
 static int ngdr = 0;
 
 
@@ -58,19 +61,23 @@ void gdrM1norm(double a, double ldpa, GDR *g)
 /**********************************************************/
 /*      Set GDR Parameters in Scope Here                  */
 /**********************************************************/
-void gdrParameterSave(GDR *gdr0)
+void gdrParameterSave(GDR *gdr0, const unsigned int a)
 {
-  if(ngdr < MAX_GDR) gdr[ngdr] = *gdr0;
-  ngdr++;
+  ngdr = 0;
+  for(int i=0 ; i<MAX_GDR ; i++){
+    if(gdr0[i].getXL() != "  ") gdr[ngdr++] = &gdr0[i];
+  }
+
+  /*** save width predicted by droplet model */
+  gdrDropletGammaSave(a);
 }
 
 
 /**********************************************************/
-/*      Reset GDR Parameters                              */
+/*      Reset GDR Normalization Factor                    */
 /**********************************************************/
 void gdrParameterReset()
 {
-  ngdr = 0;
   gStrengthFunction = 1.0;
 }
 
@@ -79,17 +86,18 @@ void gdrParameterReset()
 /*      Save Gamma by Droplet Model                       */
 /*      W.D. Myers et al. Phys. Rev. C 15, 2032 (1977)    */
 /**********************************************************/
-void gdrDropletGammaSave(double a)
+void gdrDropletGammaSave(const unsigned int a)
 {
-  gDropletGamma = 36.43 * pow(a,-1.0/3.0);
+  gDropletGamma = 36.43 * pow((double)a,-1.0/3.0);
 }
 
 
 /**********************************************************/
 /*      Gamma-ray Transmission                            */
 /**********************************************************/
-double gdrGammaTransmission(GammaProfile c, GammaMultipol gm, double eg, double a, double ex)
+double gdrGammaTransmission(GammaMultipolarity gm, double eg, double a, double ex)
 {
+  double tg = 0.0;
   string xl = "  ";
   int    l  = 0;
 
@@ -99,31 +107,48 @@ double gdrGammaTransmission(GammaProfile c, GammaMultipol gm, double eg, double 
   case E2: xl = "E2"; l = 2; break;
   case M2: xl = "M2"; l = 2; break;
   case E3: xl = "E3"; l = 3; break;
+  case M3: xl = "M3"; l = 3; break;
+  case E4: xl = "E4"; l = 4; break;
+  case M4: xl = "M4"; l = 4; break;
   default:                   break;
   }
+  if(l == 0) return(0.0);
+ 
+  /*** first, if gSTF data table is given, interpolate data */
+  if(opt.readphotoabsorption) tg = gdrGammaTransmissionInterpolate(gm,eg);
 
-  double tg = 0.0;
-  for(int i=0 ; i<ngdr ; i++){
-    if(gdr[i].getXL() == xl){
-      if(c == SL){
-        tg += gdrStandardLorentzian(l,eg,&gdr[i]);
-      }
-      else if(c == GL){
-        tg += gdrGeneralizedLorentzian(l,eg,&gdr[i],a,ex);
-      }
-      else if(c == ML){
-        tg += gdrModifiedLorentzian(l,eg,&gdr[i],a,ex);
+  /*** usual case, or when table interpolation retuned zero */
+  if(tg == 0.0){
+    tg = 0.0;
+    for(int i=0 ; i<ngdr ; i++){
+      if(gdr[i]->getXL() == xl){
+
+        GammaProfile c = gdr[i]->getProfile();
+
+        if(c == SL){
+          tg += gdrStandardLorentzian(l,eg,gdr[i]);
+        }
+        else if(c == GL){
+          tg += gdrGeneralizedLorentzian(l,eg,gdr[i],a,ex);
+        }
+        else if(c == ML){
+          tg += gdrModifiedLorentzian(l,eg,gdr[i],a,ex);
+        }
       }
     }
   }
-  /*** transmission = 2 pi x E^{2L+1} Tg */
+
+  /*** transmission = 2 pi x E^{2L+1} gSTR */
   tg *= PI2*pow(eg,2*l+1.0)*gStrengthFunction;
 
   /*** if normalization factor is given, apply that factor */
   double tgs = parmGetFactor(parmTJ,gammaray);
+
   if(tgs > 0.0) tg *= tgs;
 
-  return (tg);
+//  if(xl == "E1") cout << eg << " " << tg << endl;
+
+  return(tg);
 }
 
 
@@ -136,7 +161,7 @@ double gdrStandardLorentzian(int l, double eg, GDR *gam)
 
   if((eg == 0.0) && (l > 0)) return(0.0);
 
-  c = 26.0e-08/(2*l+1.0);
+  c = gStrNormFactor / (2*l+1.0);
   f = c * gam->getSigma() * gam->getWidth() * pow(eg,2.0-2.0*l)
         * gdrProfileLorentzian(eg,gam->getEnergy(),gam->getWidth());
 
@@ -151,7 +176,7 @@ double gdrGeneralizedLorentzian(int l, double eg, GDR *gam, double a, double ex)
 {
   double c,g,f,t;
 
-  c = 26.0e-08 / (2*l+1.0);
+  c = gStrNormFactor / (2*l+1.0);
   t = (ex < 0.0) ? 0.0 : sqrt(ex/a);
   g = (l==1) ? gdrTempDependGamma(eg,gam->getEnergy(),gam->getWidth(),t) 
              : gam->getWidth();
@@ -171,7 +196,7 @@ double gdrModifiedLorentzian(int l, double eg, GDR *gam, double a, double ex)
 {
   double c,g,f,t,p;
 
-  c = 26.0e-08 / (2*l+1.0);
+  c = gStrNormFactor / (2*l+1.0);
   t = (ex < 0.0) ? 0.0 : sqrt(ex/a);
   p = (t > 0.0) ? 1.0/(1.0 - exp(-eg/t)) : 1.0;
 
@@ -194,6 +219,9 @@ double  gdrRenormE1StrengthFunction(int pt, int jt, int a, double d0, double sn,
   if(gStrengthFunction != 1.0) return(0.0);
   if(sn <= 0.0) return(0.0);
 
+  /*** copy GDR parameters to local */
+  gdrParameterSave(n->gdr,n->za.getA());
+
   /*** retrieve input <Gg>/D0 */
   double gdinput = parmGetValue(parmGSTR);
 
@@ -208,15 +236,17 @@ double  gdrRenormE1StrengthFunction(int pt, int jt, int a, double d0, double sn,
   statSetupLevelDensity(n,&n->ldp);
 
   /*** prepare gamma-ray transmission coefficients */
-  statStoreGammaTransmission(0,tg,n);
+  statStoreContinuumGammaTransmission(0,tg,n);
 
   /*** for s-wave neutron, J = I+1/2, s1 and s2 are dummies */
   double s1[1], s2[1], tsum = 0.0;
   if(jt == 0){
     tsum = specTransitionGamma(sumall,0,pt,1   ,tg,0.0,n,s1,s2);
   }else{
-    tsum = specTransitionGamma(sumall,0,pt,jt-1,tg,0.0,n,s1,s2)
-         + specTransitionGamma(sumall,0,pt,jt+1,tg,0.0,n,s1,s2);
+    double x1 = (jt + 2.0) / (jt + 1.0);
+    double x2 = 2.0 - x1;
+    tsum = x1 * specTransitionGamma(sumall,0,pt,jt-1,tg,0.0,n,s1,s2)
+         + x2 * specTransitionGamma(sumall,0,pt,jt+1,tg,0.0,n,s1,s2);
   }
 
   double gammag = tsum * d0 /PI2; // calculated <Gamma_g>

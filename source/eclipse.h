@@ -1,11 +1,8 @@
-/*
-   eclipse.h : 
-        prototype of functions for exclusive spectrum calculations
- */
+// functions for exclusive spectrum calculations
 
 static const int NLEG =    5; // max order of Legendre expansion
 static const int NDDX =   61; // calculate angular points
-static const int NGLN =  201; // maximum number of discrete gamma lines
+static const int NGLN = 1001; // maximum number of discrete gamma lines
 static const int NCNT = 1000; // maximum number of continuum energy grids
 static const int NPRG =  100; // maximum number of primary gamma lines
 static const int NLEV =  100; // maximum number of discrete levels

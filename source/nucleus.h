@@ -1,9 +1,5 @@
-/*
-   nucleus.h : 
-        define compound nucleus and cross sections as extern
-        constructors are given in the main part
- */
-
+// define compound nucleus and cross sections as extern
+// constructors are given in the main part
 
 #ifndef COH_TOPLEVEL
 extern  CrossSection       crx;

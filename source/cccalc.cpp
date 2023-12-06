@@ -38,6 +38,9 @@ static int  ccTransmissionIndex    (Particle, const int, const int);
 static void  ccCheckMatrix(const int m, complex<double> *);
 #endif
 
+#undef PRINT_CC_POTENTIAL
+
+
 /**********************************************************/
 /*      Coupled-Channels Calculation for Entrance         */
 /**********************************************************/
@@ -258,6 +261,9 @@ void ccSetCouplingPotential(int zzprod, double mu, Pdata *proj, ZAnumber *targ)
     omSetOmp(proj->omp,gCol.lev[j].energy,targ->getZ(),targ->getA(),proj->za.getZ(),proj->za.getA(),&omp[i]);
 
     if(prn.system && ctl.entrance) outOMP(i,&omp[i]);
+#ifdef PRINT_CC_POTENTIAL
+    outOMPtable(i,&omp[i]);
+#endif
   }
 
   /*** determine matching point, point pot[0] */

@@ -231,7 +231,7 @@ double statMoldauerSystematics(double t, double st)
   double d = 1.0;
   if( (c > 0.0) && (st < 2*t) ) d = sqrt(c)/t;
   double nu = 2.0 - 1.0/(1.0 + a*(st+t)/(1-t)*b*d);
-//cout << t<<" " << st<< " " << a <<" " << b<<" " << c<<" " << d<<" " << nu << endl;
+
   return(nu);
 }
 #endif

@@ -13,10 +13,20 @@ using namespace std;
 #include "statmodel.h"
 #include "levden.h"
 
-static double  specTransisionGammaCont         (Statcalcmode, int, int, int, int, int,
-                                                double, double, Nucleus *);
-static double  specTransisionGammaDisc         (Statcalcmode, int, int, int, int, int,
-                                                double, double, Nucleus *);
+static double  specTransisionGammaCont (Statcalcmode, int, int, int, int, int,
+                                        double, double, Nucleus *);
+static double  specTransisionGammaDisc (Statcalcmode, int, int, int, int, int,
+                                        double, double, Nucleus *);
+
+/*  Parity and L of Gamma-ray E1(-), M1(+), E2(+), M2(-)... */
+inline int gammaL(const int m){ return (m/2 + 1); }
+inline int gammaParity(const int m){
+  int pm = (m%2 == 0) ? 1 : -1;  // E:even, M:odd parity
+  int l  = gammaL(m);            // L
+  int pl = (l%2 == 0) ? 1 : -1;  // parity of L
+  return(pm * pl);
+}
+
 
 /**********************************************************/
 /*      Gamma-ray Transition                              */
@@ -33,16 +43,17 @@ double specTransitionGamma
   double        *dlp)              // poplation increment
 {
   /*** continuum to continuum */
-  double x,y,sum = 0.0;
+  double x,y,sum = 0.0,td[MAX_MULTIPOL];
   int    kg;
 
   for(int k1=k0+1 ; k1<n->ncont ; k1++){
 
-    x   = specTransisionGammaCont(mode,-1,k1,p0,j0,1,tg[E1][k1],q,n);
-    x  += specTransisionGammaCont(mode, 1,k1,p0,j0,1,tg[M1][k1],q,n);
-    x  += specTransisionGammaCont(mode, 1,k1,p0,j0,2,tg[E2][k1],q,n);
-    x  += specTransisionGammaCont(mode,-1,k1,p0,j0,2,tg[M2][k1],q,n);
-    x  += specTransisionGammaCont(mode,-1,k1,p0,j0,3,tg[E3][k1],q,n);
+    x = 0.0;
+    for(int m=0 ; m<MAX_MULTIPOL ; m++){
+      int pg = gammaParity(m);
+      int l  = gammaL(m);
+      x += specTransisionGammaCont(mode,pg,k1,p0,j0,l,tg[k1][m],q,n);
+    }
 
     if( (mode == hauser) || (mode == fluctuation) ){
       kg = k1-k0;
@@ -61,20 +72,14 @@ double specTransitionGamma
     double eg = n->excitation[k0] - n->lev[i].energy;
     if(eg < 0.0) continue;
 
-    double ex = n->lev[i].energy;
-    double a  = ldDensityParameter(ex,(double)n->za.getA(),&n->ldp);
+    statStoreDiscreteGammaTransmission(eg,td,n);
 
-    double te1 = gdrGammaTransmission(GL,E1,eg,a  ,ex );
-    double tm1 = gdrGammaTransmission(SL,M1,eg,0.0,0.0);
-    double te2 = gdrGammaTransmission(SL,E2,eg,0.0,0.0);
-    double tm2 = gdrGammaTransmission(SL,M2,eg,0.0,0.0);
-    double te3 = gdrGammaTransmission(SL,E3,eg,0.0,0.0);
-
-    x   = specTransisionGammaDisc(mode,-1,i,p0,j0,1,te1,q,n);
-    x  += specTransisionGammaDisc(mode, 1,i,p0,j0,1,tm1,q,n);
-    x  += specTransisionGammaDisc(mode, 1,i,p0,j0,2,te2,q,n);
-    x  += specTransisionGammaDisc(mode,-1,i,p0,j0,2,tm2,q,n);
-    x  += specTransisionGammaDisc(mode,-1,i,p0,j0,3,te3,q,n);
+    x = 0.0;
+    for(int m=0 ; m<MAX_MULTIPOL ; m++){
+      int pg = gammaParity(m);
+      int l  = gammaL(m);
+      x += specTransisionGammaDisc(mode,pg,i,p0,j0,l,td[m],q,n);
+    }
 
     if( (mode == hauser) || (mode == fluctuation) ){
       kg = specFindEnergyBin(eg,n->de);
@@ -97,25 +102,21 @@ double specTransitionGamma
 double  specLevelTransisionGamma(Statcalcmode mode, int k0, int p0, int j0,
                                  double q, Nucleus *n)
 {
-  double x = 0.0;
+  double x = 0.0,td[MAX_MULTIPOL];
 
   for(int k1=0 ; k1<k0-1 ; k1++){
 
     double eg = n->lev[k0].energy - n->lev[k1].energy;
-    double ex = n->lev[k0].energy;
-    double a  = ldDensityParameter(ex,(double)n->za.getA(),&n->ldp);
+    if(eg < 0.0) continue;
 
-    double te1 = gdrGammaTransmission(GL,E1,eg,a  ,ex );
-    double tm1 = gdrGammaTransmission(SL,M1,eg,0.0,0.0);
-    double te2 = gdrGammaTransmission(SL,E2,eg,0.0,0.0);
-    double tm2 = gdrGammaTransmission(SL,M2,eg,0.0,0.0);
-    double te3 = gdrGammaTransmission(SL,E3,eg,0.0,0.0);
+    statStoreDiscreteGammaTransmission(eg,td,n);
 
-    x   = specTransisionGammaDisc(mode,-1,k1,p0,j0,1,te1,q,n);
-    x  += specTransisionGammaDisc(mode, 1,k1,p0,j0,1,tm1,q,n);
-    x  += specTransisionGammaDisc(mode, 1,k1,p0,j0,2,te2,q,n);
-    x  += specTransisionGammaDisc(mode,-1,k1,p0,j0,2,tm2,q,n);
-    x  += specTransisionGammaDisc(mode,-1,k1,p0,j0,3,te3,q,n);
+    x = 0.0;
+    for(int m=0 ; m<MAX_MULTIPOL ; m++){
+      int pg = gammaParity(m);
+      int l  = gammaL(m);
+      x += specTransisionGammaDisc(mode,pg,k1,p0,j0,l,td[m],q,n);
+    }
   }
 
   return(x);

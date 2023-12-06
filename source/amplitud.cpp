@@ -186,7 +186,7 @@ complex<double> omCoulombScattering(double xl1, double eta, complex<double> s)
 
 
 /***********************************************************/
-/*      Ratherform Scattering                              */
+/*      Ratherford Scattering                              */
 /***********************************************************/
 complex<double> omRutherfordAmplitude(double angle, double wave, double eta, double sig0)
 {

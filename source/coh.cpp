@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 
   /*** for exclusive spectrum calculation, all standard output will be turned off */
   if(ctl.exclusive){
-    propt = 0;
+    propt = (ctl.montecarlo) ? propt & PRN_MCHISTORY : 0;
     prext = prext & (PEX_PTABLE | PEX_DDX);
   }
 
@@ -201,6 +201,8 @@ void  cohOutputOptions(unsigned int p, unsigned int q)
   prn.angdist      = p & PRN_ANGDIST;
   prn.preeqparm    = p & PRN_PREEQPARM;
   prn.smatrix      = p & PRN_SMATRIX;
+  prn.mchistory    = p & PRN_MCHISTORY;
+  prn.fisenergy    = p & PRN_FISENERGY;
 
   pex.gbranch      = q & PEX_GBRANCH;
   pex.cumulevel    = q & PEX_CUMULEVEL;
@@ -210,6 +212,7 @@ void  cohOutputOptions(unsigned int p, unsigned int q)
   pex.ptable       = q & PEX_PTABLE;
   pex.gammaline    = q & PEX_GAMMALINE;
   pex.decaywidth   = q & PEX_DECAYWIDTH;
+  pex.gammastf     = q & PEX_GAMMASTF;
 }
 
 
@@ -235,6 +238,8 @@ void cohHelp()
   cerr << "                 128 : scattering angular distributions" << endl;
   cerr << "                 256 : preequilibrium parameters" << endl;
   cerr << "                 512 : S-matrix elements for the entrance channel" << endl;
+  cerr << "                1024 : particle emission history in the Monte Carlo mode" << endl;
+  cerr << "                2048 : fission energy table" << endl;
   cerr << "    -q M        :  M is sum of these numbers" << endl;
   cerr << "                   1 : gamma-ray branching ratios" << endl;
   cerr << "                   2 : cumulative discrete levels" << endl;
@@ -280,7 +285,7 @@ void cohAllocateMemory()
     crx.memalloc();
       
     /*** gamma-ray line array */
-    if(pex.gammaline) gml.memalloc(MAX_GAMMALINE);
+    gml.memalloc(MAX_GAMMALINE,CUT_GAMMALINE);
 
     /*** factorial */
     factorial_allocate();

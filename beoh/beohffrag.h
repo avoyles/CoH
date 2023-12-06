@@ -1,10 +1,17 @@
+static const int MAX_FINE_TUNE = 20;
+
 /****************************/
-/*   Fission Decay Data     */
+/*   Multi-Chance Fission   */
 /****************************/
 class MultiChanceFissionData{
+ private:
+  int    mftune;              // max number of fine tune nuclides
+  int    nftune;              // number of fine tune nuclides
+  bool   arrayalloc;          // memory allocation flag
  public:
   double fraction;            // fraction for multi-chance fission
   double spinfactor;          // spin distribution scaling for individual chance-fission
+  double rta[80];             // RT(A) fitted at thermal
   double spinfactor1;         // energy-dependent term of spin scaling factor
   double rt;                  // RT for energy sorting mechanism
   double rt1;                 // energy-dependent term of RT
@@ -15,14 +22,34 @@ class MultiChanceFissionData{
   double GaussSigma[8];       // Gaussian widths for fragment yield
   double GaussDelta[8];       // A-shift of Gaussian distribution
   double GaussFract[8];       // fraction for each Gaussians
+  double yap[18];             // parameters for the energy-dependent Y(A) model
+  double tkep[4];             // parameters for TKE(Einc)
+  double tkea[4]; 	      // parameters for TKE(A)
+  double stkea[3];            // parameters for sigma_TKE(A)
   double ZpFactor[4];         // even-odd factor Fz and Fn multiplicatin factor
   string ffydata;             // model to be used for Y(Z,A,TKE)
+  int    *ftuneMass;          // mass numbers to be modified
+  double *ftuneFactor;        // tuning factor
 
   MultiChanceFissionData(){
+    mftune      = MAX_FINE_TUNE;
+    ftuneMass   = new int [mftune];
+    ftuneFactor = new double [mftune];
+    arrayalloc  = true;
+
     init();
   }
 
+  ~MultiChanceFissionData(){
+    if(arrayalloc){
+      delete [] ftuneMass;
+      delete [] ftuneFactor;
+      arrayalloc = false;
+    }
+  }
+
   void init(){
+    nftune     = 0;
     fraction   = 1.0;
     spinfactor = 1.0;
     spinfactor1= 0.0;
@@ -34,11 +61,34 @@ class MultiChanceFissionData{
     eprefis    = 0.0;
     ffydata    = "internal";
     for(int i=0 ; i<8 ; i++) GaussSigma[i] = GaussDelta[i] = GaussFract[i] = 0.0;
+    for(int i=0 ; i<80 ; i++) rta[i] = 0.0;
+    for(int i=0 ; i<18 ; i++) yap[i] = 0.0;
+    for(int i=0 ; i<4 ; i++) tkep[i] = 0.0;
+    for(int i=0 ; i<4 ; i++) tkea[i] = 0.0;
+    for(int i=0 ; i<3 ; i++) stkea[i] = 0.0;
     for(int i=0 ; i<4 ; i++) ZpFactor[i] = 0.0;
   }
+
+  bool setFTune(int a, double f){
+    bool flag;
+    if(nftune >= mftune) flag = false;
+    else{
+      ftuneMass[nftune] = a;
+      ftuneFactor[nftune] = f;
+      nftune ++;
+      flag = true;
+    }
+    return flag;
+  }
+
+  int getNFTune(){ return nftune; }
+
 };
 
 
+/****************************/
+/*   Fission Decay Data     */
+/****************************/
 class FFragData{
  private:
   int maxcf;                  // maximum number of chance-fission
@@ -52,6 +102,11 @@ class FFragData{
   double maxhalflife;         // cut-off half-life for long-lived isotopes (year)
   string mcffile;             // multi-chance fission data file
   string branchdatafile;      // beta-decay branching ratio data file
+  string yafile;	      // user defined Y(A) model parameters
+  string ytkefile; 	      // user defined Y(TKE|A) model parameter
+  string rtafile; 	      // user defined R_T(A) distribuiton
+  int    selectZ;             // select Z number of FF to be calculated
+  int    selectA;             // select A number
 
   MultiChanceFissionData *mc; // fission-chance dependent data
 
@@ -77,6 +132,12 @@ class FFragData{
     maxhalflife    = 1000.0;
     mcffile        = "";
     branchdatafile = "";
+    yafile         = "";
+    ytkefile	   = "";
+    rtafile 	   = "";
+    selectZ        = 0;
+    selectA        = 0;
+
     if(arrayalloc){
       for(int i=0 ; i<maxcf ; i++) mc[i].init();
     }

@@ -38,6 +38,7 @@ class PolarCoordinate{
     np = c2+1;  if(np > NPHI  ) np = NPHI;
     dt = 180.0 / nt;
     dp = 360.0 / np;
+    allocated = false;
 
     memalloc(nt,np);
   }

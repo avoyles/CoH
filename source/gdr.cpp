@@ -10,6 +10,9 @@ using namespace std;
 
 #include "gdr.h"
 
+static void gdrRatio (GDR *, GDR *, string, const double);
+
+static const double SigmaRatio = 0.0008;
 
 /**********************************************************/
 /*      E1                                                */
@@ -22,7 +25,7 @@ void gdrE1(double mass, double beta, GDR *g)
   double width  = 0.3 * energy;
   double sigma  = 10.6 * mass / width;
   string XL     = "E1";
-  g->setGDR(XL,energy,width,sigma);
+  g->setGDR(XL,energy,width,sigma,GL);
 }
 
 void gdrE1DoubleHump0(double mass, double beta, GDR *g)
@@ -35,7 +38,7 @@ void gdrE1DoubleHump0(double mass, double beta, GDR *g)
     double width  = (0.282-0.263*beta) * energy;
     double sigma  = 3.48  * mass / width;
     string XL     = "E1";
-    g->setGDR(XL,energy,width,sigma);
+    g->setGDR(XL,energy,width,sigma,GL);
   }
 }
 
@@ -50,7 +53,7 @@ void gdrE1DoubleHump1(double mass, double beta, GDR *g)
     //double sigma  = 8.26  * mass / width;
     double sigma  = 1.464 * pow(mass,4.0/3.0) / width;
     string XL     = "E1";
-    g->setGDR(XL,energy,width,sigma);
+    g->setGDR(XL,energy,width,sigma,GL);
   }
 }
 
@@ -64,7 +67,7 @@ void gdrM1(double mass, GDR *g)
   double width  = 4.0;
   double sigma  = 1.0;
   string XL     = "M1";
-  g->setGDR(XL,energy,width,sigma);
+  g->setGDR(XL,energy,width,sigma,SL);
 }
 
 
@@ -77,7 +80,7 @@ void gdrM1scissors(double mass, double beta, GDR *g)
   double width  = 1.5;
   double sigma  = 42.4*beta*beta / width;
   string XL     = "M1";
-  g->setGDR(XL,energy,width,sigma);
+  g->setGDR(XL,energy,width,sigma,SL);
 }
 
 
@@ -91,8 +94,9 @@ void gdrE2(double z, double mass, GDR *g)
   double width  = 6.11 - 0.012*mass;
   double sigma  = 1.5e-4 * z * z * energy * energy*a3 / width;
   string XL     = "E2";
-  g->setGDR(XL,energy,width,sigma);
+  g->setGDR(XL,energy,width,sigma,SL);
 }
+
 
 
 /**********************************************************/
@@ -100,13 +104,7 @@ void gdrE2(double z, double mass, GDR *g)
 /**********************************************************/
 void gdrM2(GDR *gm1, GDR *g)
 {
-  const double ratio = 0.0008;
-
-  double energy = gm1->getEnergy();
-  double width  = gm1->getWidth();
-  double sigma  = gm1->getSigma() * ratio;
-  string XL     = "M2";
-  g->setGDR(XL,energy,width,sigma);
+  gdrRatio(gm1,g,"M2",SigmaRatio);
 }
 
 
@@ -115,12 +113,33 @@ void gdrM2(GDR *gm1, GDR *g)
 /**********************************************************/
 void gdrE3(GDR *ge2, GDR *g)
 {
-  const double ratio = 0.0008;
+  gdrRatio(ge2,g,"E3",SigmaRatio);
+}
 
-  double energy = ge2->getEnergy();
-  double width  = ge2->getWidth();
-  double sigma  = ge2->getSigma() * ratio;
-  string XL     = "E3";
-  g->setGDR(XL,energy,width,sigma);
+
+/**********************************************************/
+/*      M3                                                */
+/**********************************************************/
+void gdrM3(GDR *gm2, GDR *g)
+{
+  gdrRatio(gm2,g,"M3",SigmaRatio);
+}
+
+
+/**********************************************************/
+/*      E4                                                */
+/**********************************************************/
+void gdrE4(GDR *ge3, GDR *g)
+{
+  gdrRatio(ge3,g,"E4",SigmaRatio);
+}
+
+
+/**********************************************************/
+/*      Setting by Relative Strength                      */
+/**********************************************************/
+void gdrRatio(GDR *src, GDR *dst, string x, double r)
+{
+  dst->setGDR(x, src->getEnergy(), src->getWidth(), src->getSigma()*r, src->getProfile());
 }
 

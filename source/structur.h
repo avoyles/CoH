@@ -1,8 +1,3 @@
-/*
-   structure.h :
-        common structure definition
-*/
-
 #ifndef __CONSTANT_H__
 #define __CONSTANT_H__
 #include "constant.h"
@@ -87,8 +82,8 @@ class ZAnumber{
 /**********************************************************/
 class Parity{
  public:
-    double even              ;
-    double odd               ;
+    double even;
+    double odd;
 
     Parity(){
       even = 0.0;
@@ -107,12 +102,12 @@ class Parity{
 /**********************************************************/
 class Pdata{
  public:
-    Particle  pid            ;     /* particle identifier              */
-    ZAnumber  za             ;     /* particle mass and atomic number  */
-    int       omp            ;     /* optical potential index          */
-    int       spin2          ;     /* spin doubled                     */
-    double    mass           ;     /* exact particle mass              */
-    double    mass_excess    ;     /* particle mass excess             */
+    Particle  pid;            // particle identifier
+    ZAnumber  za;             // particle mass and atomic number
+    int       omp;            // optical potential index
+    int       spin2;          // intrinsic spin doubled
+    double    mass;           // exact particle mass
+    double    mass_excess;    // particle mass excess
 
     Pdata(){
       pid         = unknown;
@@ -130,27 +125,27 @@ class Pdata{
 /**********************************************************/
 class System{
  public:
-    ZAnumber   target        ;     /* target Z and A numbers           */
-    ZAnumber   compound      ;     /* compound nucleus Z and A         */
-    Pdata      incident      ;     /* incident particle                */
-    int        target_id     ;     /* index of target nucleus          */
-    int        inc_id        ;     /* index of incident channel        */
-    int        target_level  ;     /* level index of excited target    */
-    int        max_compound  ;     /* number of compound nucleus       */
-    int        max_particle  ;     /* max number of patricle           */
-    int        uniq_compound ;     /* number of unique compounds       */
-    int        max_channel   ;     /* actual maximum number of channes */
-    double     input_energy  ;     /* energy in input file             */
-    double     cms_energy    ;     /* incident energy                  */
-    double     lab_energy    ;     /* incident Lab energy              */
-    double     excitation    ;     /* target excitation                */
-    double     ex_total      ;     /* total excitation energy          */
-    double     energy_bin    ;     /* default energy bin width         */
-    double     energy_bin_in ;     /* input energy bin width           */
-    double     reduced_mass  ;     /* reduced mass                     */
-    double     wave_number   ;     /* wave number                      */
-    double     beta2         ;     /* ground state deformation         */
-    int       *bandidx       ;     /* collective band index            */
+    ZAnumber   target;        // target Z and A numbers
+    ZAnumber   compound;      // compound nucleus Z and A
+    Pdata      incident;      // incident particle
+    int        target_id;     // index of target nucleus
+    int        inc_id;        // index of incident channel
+    int        target_level;  // level index of excited target
+    int        max_compound;  // number of compound nucleus
+    int        max_particle;  // max number of patricle to be emitted
+    int        uniq_compound; // number of unique compounds
+    int        max_channel;   // actual maximum number of channes
+    double     input_energy;  // energy in input file
+    double     cms_energy;    // incident CMS energy
+    double     lab_energy;    // incident LAB energy
+    double     excitation;    // target excitation energy
+    double     ex_total;      // total excitation energy
+    double     energy_bin;    // default energy bin width
+    double     energy_bin_in; // input energy bin width
+    double     reduced_mass;  // reduced mass for entrance channel
+    double     wave_number;   // wave number
+    double     beta2;         // ground state deformation
+    int       *bandidx;       // collective band index
 
     System(){
       bandidx = new int [MAX_LEVELS];
@@ -192,15 +187,15 @@ class System{
 /**********************************************************/
 class Level{
  public:
-    int        flag          ;     /* special flag not defined in RIPL */
-    double     energy        ;     /* level energy                     */
-    double     spin          ;     /* level spin                       */
-    int        parity        ;     /* parity                           */
-    int        ngamma        ;     /* number of Gamma-rays             */
-    int       *fstate        ;     /* final state index for g-decay    */
-    double    *branch        ;     /* brancing ratio                   */
-    double     halflife      ;     /* half-life of the state           */
-    double    *gratio        ;     /* net gamma-ray considering ICC    */
+    int        flag;          // special flag not defined in RIPL
+    double     energy;        // level excitation energy
+    double     spin;          // level spin (not doubled)
+    int        parity;        // parity
+    int        ngamma;        // number of Gamma-rays
+    int       *fstate;        // final state index for g-decay
+    double    *branch;        // brancing ratio
+    double     halflife;      // half-life of the state
+    double    *gratio;        // net gamma-ray considering ICC
 
     Level(){
       flag     = 0;
@@ -221,13 +216,13 @@ class Level{
 /**********************************************************/
 class Channel{
  public:
-    Particle pid             ;     /* particle identifier              */
-    int      spin2           ;     /* particle spin x2                 */
-    int      next            ;     /* index of residual nucleus        */
-    int      lmax            ;     /* maximal angular momentum         */
-    double   energy          ;     /* energy of the emitted particle   */
-    double   binding_energy  ;     /* binding energy of the particle   */
-    bool     status          ;     /* channel open / close             */
+    Particle pid;             // particle identifier
+    int      spin2;           // particle spin x2
+    int      next;            // index of residual nucleus
+    int      lmax;            // maximal angular momentum
+    double   energy;          // energy of the emitted particle
+    double   binding_energy;  // binding energy of the particle
+    bool     status;          // channel status  open / close
 
     Channel(){
       init();
@@ -250,14 +245,14 @@ class Channel{
 /**********************************************************/
 class Direct{
  public:
-    int      nlev            ;       /* number of total direct levels    */
-    int      ncc             ;       /* number of coupled levels         */
-    DirType  type[MAX_DIRECT];       /* DWBA, coupled-channels           */
-    double   nonloc          ;       /* non-locality correction          */
-    double   defstatic[MAX_LAMBDA];  /* static deformation parameters    */
-    double   defdynamic[MAX_LAMBDA]; /* dynamical deformation parameters */
-    double   defdwba[MAX_DIRECT];    /* deformation for DWBA             */
-    Level    lev[MAX_DIRECT] ;       /* discrete levels                  */
+    int      nlev;                      // number of total direct levels
+    int      ncc;                       // number of coupled levels
+    DirType  type[MAX_DIRECT];          // DWBA, coupled-channels
+    double   nonloc;                    // non-locality correction
+    double   defstatic[MAX_LAMBDA];     // static deformation parameters
+    double   defdynamic[MAX_LAMBDA];    // dynamical deformation parameters
+    double   defdwba[MAX_DIRECT];       // deformation for DWBA
+    Level    lev[MAX_DIRECT];           // discrete levels
 
     Direct(){
       init();
@@ -283,14 +278,14 @@ class Direct{
 /**********************************************************/
 class LevelDensity{
  public:
-    double     match_energy  ;     /* matching energy                  */
-    double     shell_correct ;     /* shell correction energy          */
-    double     temperature   ;     /* T parameter                      */
-    double     E0            ;     /* eergy shift                      */
-    double     a             ;     /* a parameter                      */
-    double     pairing_energy;     /* pairing energy                   */
-    double     spin_cutoff   ;     /* spin cut-off factor              */
-    double     sigma0        ;     /* spin cut-off factor from levels  */
+    double     match_energy;  // matching energy
+    double     shell_correct; // shell correction energy
+    double     temperature;   // T parameter
+    double     E0;            // eergy shift
+    double     a;             // a parameter
+    double     pairing_energy;// pairing energy
+    double     spin_cutoff;   // spin cut-off factor
+    double     sigma0;        // spin cut-off factor from levels
 
     LevelDensity(){
       match_energy   = 0.0;
@@ -310,23 +305,18 @@ class LevelDensity{
 /**********************************************************/
 class Dcapt{
  public:
-    double       v1          ;     /* real isovector potential         */
-    double       w1          ;     /* imaginary isovector potential    */
-    double       nonloc      ;     /* non-locality correction          */
-    double       bmax        ;     /* max of unbound level energy      */
-    double       fshift      ;     /* shift Fermi enerrgy              */
-    GDR         *gdr         ;     /* GDR parameters                   */
-    bool         hf          ;     /* use Hartree-Fock results         */
-    HFInterface *hfsp        ;     /* Hartree-Fock s.p. orbits         */
+    double       v1;          // real isovector potential 
+    double       w1;          // imaginary isovector potential
+    double       nonloc;      // non-locality correction
+    double       bmax;        // max of unbound level energy
+    double       fshift;      // shift Fermi enerrgy
+    GDR         *gdr;         // GDR parameters given in input
+    bool         hf;          // use Hartree-Fock results
+    HFInterface *hfsp;        // Hartree-Fock s.p. orbits
 
     Dcapt(){
-      v1     = 0.0;
-      w1     = 0.0;
-      nonloc = 0.0;
-      bmax   = 1.5;
-      fshift = 0.0;
+      init();
       gdr    = new GDR [MAX_GDR];
-      hf     = false;
     }
     ~Dcapt(){
       delete [] gdr;
@@ -335,10 +325,11 @@ class Dcapt{
       v1     = 0.0;
       w1     = 0.0;
       nonloc = 0.0;
+      bmax   = 1.5;
+      fshift = 0.0;
       hf     = false;
     }
 };
-
 
 
 /**********************************************************/
@@ -346,9 +337,9 @@ class Dcapt{
 /**********************************************************/
 class KBand{
  public:
-    int      parity          ;     /* transition state parity          */
-    int      k2              ;     /* band K (doubled)                 */
-    double   excitation      ;     /* excitation energy                */
+    int      parity;          // transition state parity
+    int      k2;              // band K (doubled)
+    double   excitation;      // excitation energy
 
     KBand(){
       parity     = 0;
@@ -359,13 +350,13 @@ class KBand{
 
 class Barrier{
  public:
-    double     height        ;     /* fission barrier height           */
-    double     curvature     ;     /* barrier curvature                */
-    double     inertia       ;     /* inertia parameter, hbar^2/2I     */
-    double     elmax         ;     /* highest discrete state           */
-    int        nband         ;     /* number of transition band-head   */
-    KBand     *kband         ;     /* transition states band-head      */
-    Parity   **density       ;     /* level density on top of barrier  */
+    double     height;        // fission barrier height
+    double     curvature;     // barrier curvature
+    double     inertia;       // inertia parameter, hbar^2/2I
+    double     elmax;         // highest discrete state
+    int        nband;         // number of transition band-head
+    KBand     *kband;         // transition states band-head
+    Parity   **density;       // level density on top of barrier
 
     Barrier(){
       height    = 0.0;
@@ -380,9 +371,9 @@ class Barrier{
 
 class PotWell{
  public:
-    double     height        ;     /* fission barrier height           */
-    double     curvature     ;     /* barrier curvature                */
-    double     absorb        ;     /* absorption potential depth       */
+    double     height;        // fission barrier height
+    double     curvature;     // barrier curvature
+    double     absorb;        // absorption potential depth
     PotWell(){
       height    = 0.0;
       curvature = 0.0;
@@ -390,14 +381,27 @@ class PotWell{
     }
 };
 
+class FisEnhance{
+ public:
+    double     energy;        // enhancement of fission
+    double     width;
+    double     peak;
+    FisEnhance(){
+      energy = 0.0;
+      width  = 0.0;
+      peak   = 0.0;
+    }
+};
+
 class Fission{
  private:
-    bool       arrayalloc    ;     /* flag for memory allocation       */
+    bool       arrayalloc;    // flag for memory allocation
  public:
-    ZAnumber   za            ;     /* Z and A numbers                  */
-    int        hump          ;     /* number of fission barriers       */
-    Barrier    *barrier      ;     /* fission barriers                 */
-    PotWell    *potwell      ;     /* class-II,III wells               */
+    ZAnumber   za;            // Z and A numbers
+    int        hump;          // number of fission barriers
+    Barrier    *barrier;      // fission barriers
+    PotWell    *potwell;      // class-II,III wells
+    FisEnhance fisenhance;    // fission enhance (Lorentz shape)
 
     Fission(){
       za.setZA(0,0);
@@ -463,6 +467,7 @@ class Nucleus{
     Channel   *cdt;           // channel data
     Fission    *fission;      // fission barriers
     double     *popfis;       // population decreased by fission
+    GDR        *gdr;          // GDR parameters
     int        jmax;          // cut-off of angular momentum
     int        ndisc;         // number discrete levels
     int        ncont;         // number of continuum enerby bins
@@ -500,7 +505,8 @@ class Nucleus{
         }
         lpop           = new double [ndiscmax];
         excitation     = new double [ncontmax];
-        cdt = new Channel [MAX_CHANNEL];
+        cdt            = new Channel [MAX_CHANNEL];
+        gdr            = new GDR [MAX_GDR];
         arrayalloc = true;
       }
     }
@@ -517,6 +523,7 @@ class Nucleus{
           }
         }
         for(int k=0 ; k<ndiscmax ; k++) lpop[k] = 0.0;
+        for(int k=0 ; k<MAX_GDR ; k++) gdr[k].clear();
       }
     }
 
@@ -534,6 +541,7 @@ class Nucleus{
         delete [] excitation;
 
         delete [] cdt;
+        delete [] gdr;
         arrayalloc = false;
       }
     }
@@ -545,12 +553,12 @@ class Nucleus{
 /**********************************************************/
 class NuclearStructure{
  private:
-    int        nlevmax       ;     /* max number of levels allocated   */
-    bool       arrayalloc    ;     /* flag for memory allocation       */
+    int        nlevmax;       // max number of levels allocated
+    bool       arrayalloc;    // flag for memory allocation
  public:
-    ZAnumber   za            ;     /* Z and A numbers                  */
-    Level     *lev           ;     /* discrete level data              */
-    int        nlevel        ;     /* number discrete levels           */
+    ZAnumber   za;            // Z and A numbers
+    Level     *lev;           // discrete level data
+    int        nlevel;        // number discrete levels
 
     NuclearStructure(){
       za.setZA(0,0);
@@ -589,9 +597,9 @@ class NuclearStructure{
 /**********************************************************/
 class ParticleCount{
  public:
-    unsigned char par[7]     ;     /* number of particles emitted      */
-    double        xsec       ;     /* production cross section         */
-    double        fiss       ;     /* fission cross section            */
+    unsigned char par[7];     // number of particles emitted
+    double        xsec;       // production cross section
+    double        fiss;       // fission cross section
 
     ParticleCount(){
       init();
@@ -605,30 +613,30 @@ class ParticleCount{
 
 class CrossSection{
  private:
-    bool    arrayalloc       ;     /* flag for memory allocation       */
-    bool    arrayastro       ;     /* memory for MACS                  */
-    bool    arrayspect       ;     /* memory for MACS                  */
-    int     n_reacrate       ;     /* number of reaction rates         */
-    int     n_spectra        ;     /* number of different spectra      */
-    int     n_specbin        ;     /* number of bins for spectra       */
+    bool    arrayalloc;       // flag for memory allocation
+    bool    arrayastro;       // memory for MACS
+    bool    arrayspect;       // memory for energy spectra
+    int     n_reacrate;       // number of reaction rates
+    int     n_spectra;        // number of different spectra
+    int     n_specbin;        // number of bins for spectra
  public:
-    double  total            ;     /* total cross section              */
-    double  elastic          ;     /* elastic cross section            */
-    double  reaction         ;     /* non-elastic cross section        */
-    double  compound         ;     /* compound elastic cross section   */
-    double  dsd              ;     /* DSD capture cross section        */
-    double  preeq            ;     /* total preequilibrium emission    */
-    double  totaldir         ;     /* sum of direct inelastic          */
-    double  *direct          ;     /* direct inelastic cross sections  */
-    double  **levexcite      ;     /* discrete level excitation        */
-    double  *theta           ;     /* scattering angles                */
-    double  *costh           ;     /* cosine of scattering angles      */
-    double  **angdist        ;     /* scattering angular distribution  */
-    double  ***legcoef       ;     /* Legendre coeff. for CN ang. dist */
-    double  **spectra        ;     /* total particle energy spectra    */
-    double  **transmission   ;     /* T(lj) for in-coming particle     */
-    double  **macs           ;     /* save cross sections for MACS     */
-    ParticleCount *prod      ;     /* individual reaction cross section*/
+    double  total;            // total cross section
+    double  elastic;          // elastic cross section
+    double  reaction;         // non-elastic cross section
+    double  compound;         // compound elastic cross section
+    double  dsd;              // DSD capture cross section
+    double  preeq;            // total preequilibrium emission
+    double  totaldir;         // sum of direct inelastic
+    double  *direct;          // direct inelastic cross sections
+    double  **levexcite;      // discrete level excitation
+    double  *theta;           // scattering angles
+    double  *costh;           // cosine of scattering angles
+    double  **angdist;        // scattering angular distribution
+    double  ***legcoef;       // Legendre coeff. for CN ang. dist
+    double  **spectra;        // total particle energy spectra
+    double  **transmission;   // T(lj) for in-coming particle
+    double  **macs;           // save cross sections for MACS
+    ParticleCount *prod;      // individual reaction cross section
 
     CrossSection(){
       init();
@@ -776,9 +784,9 @@ class CrossSection{
 /**********************************************************/
 class GammaLine{
  public:
-    ZAnumber   za            ;     /* origin Z,A                      */
-    double  energy           ;     /* gamma-ray energy                */
-    double  production       ;     /* production cross section        */
+    ZAnumber   za;            // origin Z,A
+    double  energy;           // gamma-ray energy
+    double  production;       // production cross section
 
     GammaLine(){
       init();
@@ -794,27 +802,32 @@ class GammaLine{
 
 class GammaProduction{
  private:
-    int        ngmax         ;     /* maximum number of gamma-rays     */
-    bool       arrayalloc    ;     /* flag for memory allocation       */ 
+    int     ngmax;            // maximum number of gamma-rays
+    int     ncurr;            // current number of gamma-rays
+    bool    arrayalloc;       // flag for memory allocation
+    double  cutoff;           // cut off for production
  public:
-    int        n             ;     /* current number of gamma-rays     */
-    GammaLine *line          ;     /* line gammas                      */
+    GammaLine *line;          // line gammas
 
     GammaProduction(){
       ngmax = 0;
-      n = 0;
+      ncurr = 0;
+      cutoff = 0.0;
       arrayalloc = false;
     }
-    void memalloc(int n){
+
+    ~GammaProduction(){
+      memfree();
+    }
+
+    void memalloc(int n, double c){
       if(!arrayalloc){
         ngmax = n;
         line  = new GammaLine [ngmax];
-        for(int i=0 ; i<ngmax ; i++) line[i].init();
         arrayalloc = true;
+        init();
       }
-    }
-    ~GammaProduction(){
-      memfree();
+      cutoff = c;
     }
 
     void memfree(){
@@ -823,6 +836,32 @@ class GammaProduction{
         arrayalloc = false;
       }
     }
+
+    void init(){
+      if(arrayalloc){
+        ncurr = 0;
+        for(int i=0 ; i<ngmax ; i++) line[i].init();
+      }
+    }
+
+    int push(ZAnumber za, double e, double p){
+      for(int i=0 ; i<ncurr ; i++){
+        if( (line[i].energy == e) && (line[i].za == za) ){
+          line[i].production += p;
+          return ncurr;
+        }
+      }
+
+      if( (ncurr < ngmax) && (p >= cutoff) ){
+        line[ncurr].za = za;
+        line[ncurr].energy = e;
+        line[ncurr].production = p;
+        ncurr++;
+      }
+      return ncurr;
+    }
+
+    int getN(){ return ncurr; }
 };
 
 
@@ -934,9 +973,9 @@ class FNSpec{
 class MFTparm{
  public:
   ZAnumber target;
-  int      n0;     // number of Harmonic Oscillator basis
-  double   b;      // b = sqrt(hbar/m w)
-  double   q;      // omega ratio
+  int      n0;                // number of Harmonic Oscillator basis
+  double   b;                 // b = sqrt(hbar/m w)
+  double   q;                 // omega ratio
 
   /*** parameters for Hartree-Fock */
   double   value[5];

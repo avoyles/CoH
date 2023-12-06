@@ -95,8 +95,9 @@ class FissionObservable{
   double    *chi;                  // prompt fission neutron spectrum
   double    *multiplicitydist[2];  // multiplicities as function of A
   double    *eaveragedist[2];      // average energies as function of A
-  double    *preChainYield;        // Y(A) before neutron emission
-  double    *postChainYield;       // Y(A) after neutron emission
+  double    *preMassYield;         // Y(A) before neutron emission
+  double    *postMassYield;        // Y(A) after neutron emission
+  double    *javeragedist;         // distribution of average spin <J>
   double    *Pn;                   // neutron multiplicity distribution
   double    *yTKE;                 // sum of yield at each TKE bin
   double    *nTKE;                 // nu(TKE)
@@ -133,9 +134,11 @@ class FissionObservable{
       chi = new double [nsize];
       for(int i=0 ; i<nsize ; i++) chi[i] = 0.0;
 
-      preChainYield       = new double [msize];
-      postChainYield      = new double [msize];
-      for(int i=0 ; i<msize ; i++) preChainYield[i] =  postChainYield[i] = 0.0;
+      preMassYield  = new double [msize];
+      postMassYield = new double [msize];
+      javeragedist  = new double [msize];
+      for(int i=0 ; i<msize ; i++) preMassYield[i] =  postMassYield[i] = javeragedist[i] = 0.0;
+
 
       for(int i=0 ; i<2 ; i++){
         multiplicitydist[i] = new double [msize];
@@ -167,8 +170,8 @@ class FissionObservable{
         delete [] spectrum[p];
       }
       delete [] chi;
-      delete [] preChainYield;
-      delete [] postChainYield;
+      delete [] preMassYield;
+      delete [] postMassYield;
       delete [] Pn;
       delete [] yTKE;
       delete [] nTKE;

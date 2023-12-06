@@ -71,6 +71,21 @@ void outOMP(int ctl, Optical *omp)
 }
 
 
+void outOMPtable(int ctl, Optical *omp)
+{
+  if(ctl == 0) outVal(8,3,outRetrieveLabE());
+  else cout << "        ";
+
+  outVal(8,3,omp->volume.real());     outVal(8,3,omp->r0);   outVal(8,3,omp->a0);
+  outVal(8,3,omp->surface.real());    outVal(8,3,omp->r0s);  outVal(8,3,omp->a0s);
+  outVal(8,3,omp->volume.imag());     outVal(8,3,omp->rv);   outVal(8,3,omp->av);
+  outVal(8,3,omp->surface.imag());    outVal(8,3,omp->rs);   outVal(8,3,omp->as);
+  outVal(8,3,omp->spin_orbit.real()); outVal(8,3,omp->rvso); outVal(8,3,omp->avso);
+  outVal(8,3,omp->spin_orbit.imag()); outVal(8,3,omp->rwso); outVal(8,3,omp->awso);
+  outVal(8,2,omp->rc);
+  cout << endl;
+}
+
 /**********************************************************/
 /*     Output collective states                           */
 /**********************************************************/

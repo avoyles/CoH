@@ -289,6 +289,15 @@ void WahlZpModel(const int zf, const int af, const int mass_first, const int nma
     if(zp.FZ > 1.0 && fzn[0] != 0.0) zp.FZ = 1.0 + (zp.FZ - 1.0)*fzn[0];
     if(zp.FN > 1.0 && fzn[1] != 0.0) zp.FN = 1.0 + (zp.FN - 1.0)*fzn[1];
 
+    /* modify Symm region, connect DeltaZ linearly between B2 and B3 */
+    // if( (zd.B[2] <= ap) && (ap < zd.B[3]) ){
+    //   ZpModelParameter zp0, zp1;
+    //   ParameterPeak(zd.B[2],af - zd.B[2],&zd,&zp0);
+    //   ParameterPeak(zd.B[3],af - zd.B[3],&zd,&zp1);
+
+    //   zp.DeltaZ = (zp1.DeltaZ - zp0.DeltaZ)/(zd.B[3] - zd.B[2]) * (ap - zd.B[2]) + zp0.DeltaZ;
+    // }
+
     z0[i] = FractionalYield(zf,af,ncharge,ap,&zp,fz[i]);
   }
 }
@@ -347,14 +356,14 @@ void ParameterWing(double ap, double ah, ZpModelData *d, ZpModelParameter *p)
   if(ap < ah){
     p->DeltaZ = - deltaB5 - d->dDeltaZW * (d->B[4] - ah);
     p->SigmaZ = sigmaB5   + d->dSigmaZW * (d->B[1] - ap);
-    p->FZ     = d->FZ140 + d->dFZW     * (d->B[1] - ap);
-    p->FN     = d->FN140 + d->dFNW     * (d->B[1] - ap);
+    p->FZ     = d->FZ140 + d->dFZW      * (d->B[1] - ap);
+    p->FN     = d->FN140 + d->dFNW      * (d->B[1] - ap);
   }
   else{
     p->DeltaZ = deltaB5   - d->dDeltaZW * (ap - d->B[4]);
     p->SigmaZ = sigmaB5   + d->dSigmaZW * (ap - d->B[4]);
-    p->FZ     = d->FZ140 + d->dFZW     * (ap - d->B[4]);
-    p->FN     = d->FN140 + d->dFNW     * (ap - d->B[4]);
+    p->FZ     = d->FZ140 + d->dFZW      * (ap - d->B[4]);
+    p->FN     = d->FN140 + d->dFNW      * (ap - d->B[4]);
   }
 }
 

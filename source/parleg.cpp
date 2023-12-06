@@ -18,8 +18,11 @@ using namespace std;
 #include "etc.h"
 #include "polysq.h"
 
-static void specBiedenharn(int, int, double, int, int, int, int, int, int,
-                           Transmission *, Nucleus *);
+#define CONTINUUM_ANGDIST
+
+static void specBiedenharn (const int, const int, const double, const int, const int, const int, const int, const int, const int, Transmission *, Nucleus *);
+
+static void specBiedenharnContinuum (const double, const int, const int, const int, const int, const int, const int, Transmission *, Nucleus *, double ***);
 
 
 /**********************************************************/
@@ -29,19 +32,16 @@ static void specBiedenharn(int, int, double, int, int, int, int, int, int,
 /*             Compound Nuclear Reaction                  */
 /**********************************************************/
 
-static int ig=0, i0=0, p0=0, spin0=0, spin1=0;
+static int i0 = 0, spin0 = 0, ir = 0, spin1 = 0;
 
-void    specLegendreCoefficient(int targid, int incid, int targlev, double coef,
-                                int pcn, int jcn, int lp0, int jp0, Transmission **td)
+void    specLegendreCoefficient(const int targid, const int incid, const int targlev, const double coef, const int pcn, const int jcn, const int lp0, const int jp0, Transmission **td)
 {
   Nucleus *n1;
   int c0 = 0;
 
   /*** set global scope parameters */
   spin0 = ncl[c0].cdt[incid].spin2;                 // projectile spin
-  ig    = (int)(2.0*halfint(ncl[c0].lev[0].spin));  // ground state spin
   i0    = (int)(2.0*ncl[targid].lev[targlev].spin); // target state spin
-  p0    = ncl[targid].lev[targlev].parity;          // target state parity
 
   double g = coef*(jcn+1.0)/PI4;
 
@@ -57,11 +57,31 @@ void    specLegendreCoefficient(int targid, int incid, int targlev, double coef,
 
 
 /**********************************************************/
+/*      Legendre Coefficients in Continuum (optional)     */
+/**********************************************************/
+void    specLegendreCoefficientContinuum(const double coef, const int pcn, const int jcn, const int lp0, const int jp0, Transmission **tc, double ***cleg)
+{
+  Nucleus *n1;
+  int c0 = 0;
+  double g = coef*(jcn+1.0)/PI4;
+
+  /*** For all particle emission channels */
+  for(int id=1 ; id<MAX_CHANNEL ; id++){
+    if(!ncl[c0].cdt[id].status) continue;
+
+    n1    = &ncl[ncl[c0].cdt[id].next];
+    spin1 = ncl[c0].cdt[id].spin2;
+    ir    = (int)(2.0*halfint(n1->lev[0].spin));    // residual ground state spin (half or int)
+    specBiedenharnContinuum(g,ncl[c0].jmax,id,pcn,jcn,lp0,jp0,tc[id],n1,cleg);
+  }
+}
+
+
+/**********************************************************/
 /*      Legendre Coefficients for fixed J, l0,j0          */
 /*      using the Biedenharn formula                      */
 /**********************************************************/
-void    specBiedenharn(int incid, int targlev, double g, int jmax, int id, int pcn, int jcn,
-                       int lp0, int jp0, Transmission *td, Nucleus *n1)
+void    specBiedenharn(const int incid, const int targlev, const double g, const int jmax, const int id, const int pcn, const int jcn, const int lp0, const int jp0, Transmission *td, Nucleus *n1)
 {
   /*** Loop over Legendre coefficient index L */
   /*** all odd-terms are zero, so that we dont calculate */
@@ -106,6 +126,54 @@ void    specBiedenharn(int incid, int targlev, double g, int jmax, int id, int p
               }
             }
             crx.legcoef[id][k1][idx] += phi*(c0*c1 + c2)*wf;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+/**********************************************************/
+/*      Biedenharn formula for Continuum (optional)       */
+/**********************************************************/
+void    specBiedenharnContinuum(const double g, const int jmax, const int id, const int pcn, const int jcn, const int lp0, const int jp0, Transmission *tc, Nucleus *n1, double ***cleg)
+{
+  /*** Loop over Legendre coefficient index L */
+  for(int l=0 ; l<2*jmax ; l+=4){
+    int idx = l/2;
+
+    double z0 = z_coefficient(lp0,jp0,lp0,jp0,spin0,l); if(z0 == 0.0) continue;
+    double w0 = racah(jp0,jcn,jp0,jcn,i0,l);            if(w0 == 0.0) continue;
+    double c0 = z0*w0*g;
+
+    /*** Loop over continuum bins in the residual nucleus */
+    for(int k1=0 ; k1<n1->ncont ; k1++){
+      if(tc[k1].lmax <= 0) continue;
+
+      for(int i1=ir ; i1<=2*jmax+ir ; i1+=2){ // spin distribution at excitation[k]
+        int jdx = (i1-ir)/2;
+
+        for(int p1=-1 ; p1<=1 ; p1+=2){       // parity distribution
+
+          int phi = parity( spin0-spin1-i0+i1 );
+          double rho = (p1 == 1) ? n1->density[k1][jdx].even : n1->density[k1][jdx].odd;
+
+          /*** For exit channel Tlj coupled to JP */
+          for(int lp1=0 ; lp1<=2*tc[k1].lmax ; lp1+=2){
+            if(parity(lp1) != pcn*p1) continue;
+
+            for(int sp1=spin1 ; sp1>=-spin1 ; sp1-=2){
+              int jp1 = lp1 + sp1;  if(jp1 < 0) continue;
+
+              if((i1 >= abs(jcn-jp1)) && (i1 <= jcn+jp1)){
+                double z1 = z_coefficient(lp1,jp1,lp1,jp1,spin1,l); if(z1 == 0.0) continue;
+                double w1 = racah(jp1,jcn,jp1,jcn,i1,l);            if(w1 == 0.0) continue;
+                double t1 = tc[k1].tran[tj_index(lp1,sp1,spin1)];   if(t1 == 0.0) continue;
+                double c1 = z1*w1*t1*rho;
+                cleg[id][k1][idx] += phi*c0*c1;
+              }
+            }
           }
         }
       }

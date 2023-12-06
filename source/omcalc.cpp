@@ -101,7 +101,7 @@ int omCalc
 //      Main Calculation
 
   /***  free space wave function */
-  cdt.lmax = omExternalFunction(0,pot.rho_match,lev.coulomb,lev.coulomb_scat0,&wfn);
+  cdt.lmax = omExternalFunction(0,pot.rho_match,lev.coulomb,&wfn);
 
 #ifdef  ParticalCrossSection
  for(int l=0 ; l<LPartial ; l++) parSigE[l] = parSigR[l] = parSigT[l] = 0.0;

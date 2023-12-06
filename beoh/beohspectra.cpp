@@ -14,6 +14,7 @@ using namespace std;
 #include "statmodel.h"
 #include "beohstat.h"
 #include "nucleus.h"
+#include "global.h"
 
 static void specCmsToLab(const int, double, double, double *, double *);
 
@@ -21,7 +22,7 @@ static void specCmsToLab(const int, double, double, double *, double *);
 /*      Decay of each compound nucleus                    */
 /**********************************************************/
 void    beohspectra(System *sys, Pdata *pdt,
-                    Transmission **tc, Transmission **td, double **tg, Spectra *spc)
+                    Transmission **tc, Transmission **td, double **tg, Spectra *spc, GammaProduction *gml)
 {
   /*** Loop over each daughter compound nucleus */
   for(int c0=0 ; c0<sys->max_compound ; c0++){
@@ -36,7 +37,7 @@ void    beohspectra(System *sys, Pdata *pdt,
     for(int k0=0 ; k0<ncl[c0].ncont ; k0++){
 
       /*** Store gamma-ray transmission data into array */
-      statStoreGammaTransmission(k0,tg,&ncl[c0]);
+      statStoreContinuumGammaTransmission(k0,tg,&ncl[c0]);
 
       /*** Transmission coefficients for discrete levels */
       statStoreDiscreteTransmission(c0,ncl[c0].excitation[k0],pdt,td);
@@ -51,7 +52,7 @@ void    beohspectra(System *sys, Pdata *pdt,
     /*** Gamma-ray cascading */
     specGammaCascade(spc->cn[0],&ncl[c0]);
 
-    /*** ground state population + meta states when no gamma decay */
+    /*** Ground state population + meta states when no gamma decay */
     crx.prod[c0].xsec += ncl[c0].lpop[0];
     for(int i=1 ; i<ncl[c0].ndisc ; i++){
       if(ncl[c0].lev[i].ngamma == 0) crx.prod[c0].xsec += ncl[c0].lpop[i];
@@ -59,7 +60,9 @@ void    beohspectra(System *sys, Pdata *pdt,
 
     /*** Add to total particle emission spectra */
     specCumulativeSpectra(spc->getCsize(),spc->getNsize(),spc->cn,&ncl[c0]);
-//  outSpectrum(beohZeroCut(spc->cn),ncl[0].de,spc->cn);
+
+    /*** Store discrete gamma lines */
+    if(opt.finegammaspectrum) specStoreDiscreteGamma(&ncl[c0],gml);
   }
 }
 
@@ -89,7 +92,7 @@ void    beohspectraLAB(System *sys, Pdata *pdt,
       spc->memclear("cn");
 
       /*** Store gamma-ray transmission data into array */
-      statStoreGammaTransmission(k0,tg,&ncl[c0]);
+      statStoreContinuumGammaTransmission(k0,tg,&ncl[c0]);
 
       /*** Transmission coefficients for discrete levels */
       statStoreDiscreteTransmission(c0,ncl[c0].excitation[k0],pdt,td);
@@ -110,7 +113,7 @@ void    beohspectraLAB(System *sys, Pdata *pdt,
       specCumulativeSpectra(spc->getCsize(),spc->getNsize(),spc->cn,&ncl[c0]);
     }
 
-    /*** clear cn-array one more time, since spc is already added in the k-loop */
+    /*** Clear cn-array one more time, since spc is already added in the k-loop */
     spc->memclear("cn");
 
     /*** Particle decay from levels if possible, ignore spec contribution */
@@ -118,6 +121,7 @@ void    beohspectraLAB(System *sys, Pdata *pdt,
 
     /*** Gamma-ray cascading, ground state population */
     specGammaCascade(spc->cn[0],&ncl[c0]);
+
     crx.prod[c0].xsec += ncl[c0].lpop[0];
 
     /*** Add to total particle emission spectrum */

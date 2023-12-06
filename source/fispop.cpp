@@ -61,6 +61,14 @@ double specTransitionFission
   /*** fission transmission adjustment */
   tj *= parmGetFactor(parmTJ,n->za,fission);
 
+  if(fb->fisenhance.energy > 0.0){
+    double w2 = fb->fisenhance.width * fb->fisenhance.width;
+    double e2 = ex - fb->barrier[0].height - fb->fisenhance.energy; e2 = e2 * e2;
+    tj *= 1.0 + fb->fisenhance.peak * w2 / (e2 + w2);
+
+//    cout << e2 << " " << fb->fisenhance.peak * w2 / (e2 + w2) << endl;
+  }
+
   /*** average number of channels */
   double degfree = 0.0;
   for(int i=0 ; i<MAX_HUMP ; i++) degfree += ch[i];

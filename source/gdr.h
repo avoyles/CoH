@@ -1,47 +1,54 @@
-/*
-   gdr.h : 
-        prototype of functions for global GDR parameters
- */
+/**************************************/
+/*      Gamma-ray Multipolarity       */
+/**************************************/
+typedef enum {EX = 0, SL = 1, GL = 2, ML = 3} GammaProfile;
+typedef enum {E1 = 0, M1 = 1, E2 = 2, M2 = 3, E3 = 4, M3 = 5, E4 = 6, M4 = 7} GammaMultipolarity;
 
 
 /****************************/
-/*   GDR Parameters         */
+/*      G(D)R Parameters    */
 /****************************/
 class GDR{
  private:
-    string     XL            ;     /* E or M, and multipolarity        */
-    double     energy        ;     /* GDR energy                       */
-    double     width         ;     /* GDR width                        */
-    double     sigma         ;     /* GDR peak-cross section           */
+    GammaProfile prof;   // Lorentzian shape
+    string       XL;     // E or M, and multipolarity
+    double       energy; // GDR energy
+    double       width;  // GDR width
+    double       sigma;  // GDR peak-cross section
  public:
     GDR(){
-      XL      = "  ";
-      energy  = 0.0;
-      width   = 0.0;
-      sigma   = 0.0;
+      clear();
     }
-    void setGDR(string em, double e, double w, double s){
+
+    void setGDR(string em, double e, double w, double s, GammaProfile p){
+      prof    = p;
       XL      = em;
       energy  = e;
       width   = w;
       sigma   = s;
     }
+
     void clear(){
+      prof    = SL;
       XL      = "  ";
       energy  = 0.0;
       width   = 0.0;
       sigma   = 0.0;
     }
+
+    GammaProfile getProfile() {return prof;}
     string getXL    () {return XL;}
     double getEnergy() {return energy;}
     double getWidth () {return width ;}
     double getSigma () {return sigma ;}
     char   getEM    () {char em = (XL[0]=='E') ? 'E' : 'M'; return(em);}
     int    getL     () {return( (int)(XL[1])-'0');}
-    void   setXL    (string em) {XL     = em;}
-    void   setEnergy(double e ) {energy = e;}
-    void   setWidth (double w ) {width  = w;}
-    void   setSigma (double s ) {sigma  = s;}
+
+    void   setProfile(GammaProfile p) {prof = p;}
+    void   setXL     (string em) {XL     = em;}
+    void   setEnergy (double e ) {energy = e;}
+    void   setWidth  (double w ) {width  = w;}
+    void   setSigma  (double s ) {sigma  = s;}
 };
 
 
@@ -56,3 +63,5 @@ void    gdrM1scissors          (double, double, GDR *);
 void    gdrE2                  (double, double, GDR *);
 void    gdrM2                  (GDR *,  GDR *);
 void    gdrE3                  (GDR *,  GDR *);
+void    gdrM3                  (GDR *,  GDR *);
+void    gdrE4                  (GDR *,  GDR *);

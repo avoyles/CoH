@@ -37,6 +37,10 @@ class ZAPair{
   double ex;                  // average TXE
   double ek;                  // average TKE
   double sigma;               // TKE (TXE) distribution width
+  double el;                  // excitation energy of light fragment
+  double wl;                  // energy of width light fragment
+  double eh;                  // excitation energy of heavy fragment
+  double wh;                  // energy width of heavy fragment
 
   ZAPair(void){
     Zl    = 0;
@@ -48,6 +52,8 @@ class ZAPair{
     ex    = 0.0;
     ek    = 0.0;
     sigma = 0.0;
+    el = wl = 0.0;
+    eh = wh = 0.0;
   }
 
   void setPair(int zl, int al, int zh, int ah){
@@ -210,6 +216,8 @@ void   FFPGaussianParameters (const bool, const int, const int, const double, co
 double FFPSystematics_TKE_A (const bool, const int, const int, const int, const double);
 double FFPSystematics_TKE_A_Width (const bool, const int, const int, const int);
 double FFPSystematics_TKE_En (const bool, const int, const int, const double, const double);
+double FFPConstructTKEA(const int, const int, double *);
+double FFPConstructSigmaTKEA(const int, const int, double *);
 
 double FFPMultichance_FissionProbability (const int, const int, const double, const int);
 double FFPMultichance_TotalKineticEnergy (const int, const int, const double, const int);
@@ -225,11 +233,22 @@ int FFPReadMultichanceFissionData (const string, const double, double *);
 /**************************************/
 /*      ffpyield.cpp                  */
 /**************************************/
-void   FFPMassChainYieldParameters (const bool, string, double *, double *, double *, FissionFragmentPair *);
-void   FFPReadRawYield (string, FissionFragmentPair *);
-void   FFPGeneratePairs (const bool, const double, FissionFragmentPair *, double *);
+//void   FFPMassChainYieldParameters (const bool, string, double *, double *, double *, FissionFragmentPair *);
+void   FFPConstructYieldParameters(double *, double, double *, double *, double *, FissionFragmentPair *);
+//void   FFPGeneratePairs (const bool, const double, FissionFragmentPair *, double *);
+void   FFPGeneratePairs (const bool, const double, FissionFragmentPair *, double *, double *, double *, const int, int *, double *);
+void   FFPMassYieldParameters (const bool, string, double *, double *, double *, FissionFragmentPair *);
+void   FFPGeneratePairs (const bool, const double, FissionFragmentPair *, double *, const int, int *, double *);
+void   FFPGeneratePairsExpdata (FissionFragmentPair *, double *, double **, const int, const int, const int, const int);
 double FFPAverageTKE (FissionFragmentPair *);
 void   FFPExpandList (const int, FissionFragmentPair *);
+
+
+/**************************************/
+/*      ffpyieldread.cpp              */
+/**************************************/
+void   FFPReadPairs (const string, FissionFragmentPair *);
+void   FFPReadExpdata (const string, FissionFragmentPair *, double *);
 
 
 /**************************************/
@@ -240,6 +259,6 @@ void   FFPOutputSpec (const double, const double, FissionObservable *);
 void   FFPOutputPairs (const double, FissionFragmentPair *);
 void   FFPOutputTXEDistribution (FissionFragmentPair *);
 void   FFPOutputTKEDistribution (const int, FissionFragmentPair *);
-void   FFPOutputChainYield (const int, const int, const int, double *, double *, double *);
+void   FFPOutputYield (const int, const int, const int, double *, double *, double *);
 void   FFPOutputIndividualSpectrum (ZAPair *, const int, const double, double *, double *, double *);
 

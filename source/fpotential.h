@@ -1,8 +1,4 @@
-/*
-   fpotential.h : 
-        prototype of functions for fission potential
- */
-
+// functions for transmission calculation through given fission potential
 
 #ifndef __COMPLEX_H__
 #define __COMPLEX_H__

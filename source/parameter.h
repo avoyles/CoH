@@ -1,9 +1,6 @@
-/*
-   parameter.h : 
-        class for parameter adjustment
- */
+// class for parameter adjustment
 
-const int MAX_ADJUSTABLES   =   50 ;  /* maximum num of adjustable parameters  */
+const int MAX_ADJUSTABLES   =  100 ;  /* maximum num of adjustable parameters  */
 
 enum parameterType{
      null,
@@ -33,7 +30,8 @@ enum parameterType{
      parmISOM,    // threshold time for determining isomeric states
      parmD0SR,    // search level density parameter for given D0 value
      parmESET,    // built-in incident energy grid
-     parmBROD     // photon spectrum Gaussian broadening
+     parmBROD,    // photon spectrum Gaussian broadening
+     parmCOLL     // collective ehnancement in pre-equilibrium level density
 };
 typedef enum parameterType ParmType;
 
@@ -41,7 +39,7 @@ typedef enum parameterType ParmType;
 static string pname[] = 
     {"    ","OV  ","OW  ","ORV ","ORW ","OAV ","OAW ","OC  ","M2  ","M2R ",
      "SD  ","KO  ","TJ  ","LD  ","SPIN","PAIR","PDST","LCUT","DSDV",
-     "FL1 ","FL2 ","FL3 ","GSTR","GDRM","ISOM","D0SR","ESET","BROD"};
+     "FL1 ","FL2 ","FL3 ","GSTR","GDRM","ISOM","D0SR","ESET","BROD","COLL"};
 
 /****************************/
 /*   Adjustable Parameters  */

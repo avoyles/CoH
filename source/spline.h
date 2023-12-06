@@ -1,7 +1,4 @@
-/*
-   spline.h : 
-        class and prototype of functions for B-spline function
- */
+// class and functions for B-spline function
 
 /**************************************/
 /*      B-Spline Interpolation        */

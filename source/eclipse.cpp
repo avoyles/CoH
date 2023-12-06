@@ -249,7 +249,7 @@ void  eclGenerateDecayTable(int c0, int k0, const int cm, double **dlp)
   double sum = 0.0;
   for(int k=k0 ; k<km ; k++){
     for(int j=0 ; j<cm ; j++){
-      if( (k==0) && (j==0) )continue;
+      if( (k == 0) && (j == 0) ) continue;
       sum += dlp[j][k];
     }
   }

@@ -27,12 +27,14 @@ unsigned int OMPWalterGuss(double e,int at, int zt, int ai, int zi, Optical *omp
      }
    }
    else{
-     if(zi==0)   omp->v1  = 52.56 - 0.310*40.0*(1.0+log(e/40.0))
+     if(zi==0){  omp->v1  = 52.56 - 0.310*40.0*(1.0+log(e/40.0))
                           -(16.50 - 0.081*40.0*(1.0+log(e/40.0)))*eps;
-     else        omp->v1  = 52.56 - 0.310*40.0*(1.0+log(e/40.0))
+     }
+     else{       omp->v1  = 52.56 - 0.310*40.0*(1.0+log(e/40.0))
                           +(16.50 - 0.081*40.0*(1.0+log(e/40.0)))*eps
                           +  0.4*(double)zt/a13 * 678.0/(e*e);
-                 omp->v2  =  0.0;
+     }
+     omp->v2  =  0.0;
    }
 
    if(e<=39.4){  omp->wv1 = -0.963;
@@ -42,9 +44,11 @@ unsigned int OMPWalterGuss(double e,int at, int zt, int ai, int zi, Optical *omp
                  omp->wv2 =  0.0;
    }
 
-   if(zi==0)     omp->ws1 = 10.85 -14.94 *eps;
-   else          omp->ws1 = 10.85 +14.94 *eps-1.30;
-                 omp->ws2 = -0.157;
+   if(zi==0){    omp->ws1 = 10.85 -14.94 *eps;
+   }
+   else{         omp->ws1 = 10.85 +14.94 *eps-1.30;
+   }
+   omp->ws2 = -0.157;
 
    omp->vso1=  5.767+ 2.0*eps;
    omp->vso2= -0.015;

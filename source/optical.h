@@ -1,9 +1,6 @@
-/*
-   optical.h : 
-        structure definition used in optical model calculations
-        define global constants
-        prototype of functions used in optical model
- */
+// structure definition used in optical model calculations
+// define global constants
+// functions used in optical model
 
 #ifndef __COMPLEX_H__
 #define __COMPLEX_H__
@@ -71,6 +68,7 @@ class Optical{
     double v1  ;double vs1 ;double wv1 ;double ws1 ;double vso1;double wso1;
     double v2  ;double vs2 ;double wv2 ;double ws2 ;double vso2;double wso2;
     double v3  ;double vs3 ;double wv3 ;double ws3 ;double vso3;double wso3;
+    double v4  ;
     double rc  ;
     double R0  ;double R0s ;double Rv  ;double Rs  ;double Rvso;double Rwso;
     double Rc  ;
@@ -89,6 +87,7 @@ class Optical{
       v1  = 0.0; vs1 = 0.0; wv1 = 0.0; ws1 = 0.0; vso1= 0.0; wso1= 0.0;
       v2  = 0.0; vs2 = 0.0; wv2 = 0.0; ws2 = 0.0; vso2= 0.0; wso2= 0.0;
       v3  = 0.0; vs3 = 0.0; wv3 = 0.0; ws3 = 0.0; vso3= 0.0; wso3= 0.0;
+      v4  = 0.0;
       rc  = 0.0;
       R0  = 0.0; R0s = 0.0; Rv  = 0.0; Rs  = 0.0; Rvso= 0.0; Rwso= 0.0;
       Rc  = 0.0;
@@ -103,7 +102,8 @@ class Optical{
 
     void setDepth(double e){
       double e2 = e*e;
-      double vr = v1   + v2   *e + v3   *e2;
+      double e3 = e*e*e;
+      double vr = v1   + v2   *e + v3   *e2 + v4 * e3;
       double vi = wv1  + wv2  *e + wv3  *e2;
 
       double dr = vs1  + vs2  *e + vs3  *e2;
@@ -492,8 +492,8 @@ void    ccPotentialFormVib     (int, int, Optical *, double, Potential *, Potent
 /**************************************/
 /*      extwave.cpp                   */
 /**************************************/
-int     omExternalFunction     (int, double, double, double, Wavefunc *);
-int     omExternalClosed       (int, double, double, Wavefunc *);
+int     omExternalFunction     (int, const double, const double, Wavefunc *);
+int     omExternalClosed       (int, const double, const double, Wavefunc *);
 
 
 /**************************************/

@@ -1,7 +1,4 @@
-/*
-   masstable_ripl2.h :
-        nuclear masses from RIPL-2
-*/
+// nuclear masses from RIPL-2
 
 static const int nMassTable = 9151;
 

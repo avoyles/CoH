@@ -111,12 +111,12 @@ void beohAddElectronSpectrum(double r, double de, double *t, double *spc1, doubl
 double beohEnergySpectrum(double e)
 {
   double s = 0.0;
-  if(e>endp) return(s);
+  if(e > endp) return(s);
 
   /*** this is unnormalized spectrum */
   double f = beohFermiFunction(e);
 
-  if(e==0.0){
+  if(e == 0.0){
     s = endp * endp * f;
   }
   else{
@@ -131,7 +131,7 @@ double beohFermiFunction(double e)
   double f = 0.0;
   double g = sqrt(1.0 - ALPHA*ALPHA*z*z);
 
-  if(e==0.0){
+  if(e == 0.0){
     f = PI2 * pow(ALPHA*z,2*g-1.0) * pow(EELECTRON,2*g);
   }
   else{

@@ -1,8 +1,4 @@
-/*
-   fns.h : 
-        prototype of functions for fission neutron spectrum model calculations
- */
-
+// functions for fission neutron spectrum model calculations
 
 const double MAX_SPECTRUM_ENERGY = 30.0;
 
