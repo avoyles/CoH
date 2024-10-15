@@ -14,8 +14,8 @@ const int MAX_DIRECT        =     1;  // number of direct reaction
 const int MAX_FISS_CHANCE   =    20;  // total number of multi-chance fission
 const int MAX_GAMMALINE     = 30000;  // maximum number of gamma lines printed
 #else
-const int MAX_COMPOUND      =   500;  // maximum number of compound nucleus
-const int MAX_NUCLIDE       =   150;  // number of unique nuclides in chain
+const int MAX_COMPOUND      =  2000;  // maximum number of compound nucleus
+const int MAX_NUCLIDE       =   350;  // number of unique nuclides in chain
 const int MAX_DIRECT        =    20;  // number of direct reaction
 const int MAX_FISS_CHANCE   =    20;  // total number of multi-chance fission
 const int MAX_GAMMALINE     =  2000;  // maximum number of gamma lines printed

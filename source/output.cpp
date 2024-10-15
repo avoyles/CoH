@@ -45,6 +45,8 @@ double outRetrieveLabE(void){ return labE; }
 #include "outbanner.h"
 #include "outformat.h"
 
+#define PRINT_BANNER
+
 
 /**********************************************************/
 /*      Header                                            */
@@ -52,7 +54,7 @@ double outRetrieveLabE(void){ return labE; }
 void outTitle(char *str)
 {
 #ifdef PRINT_BANNER
-  outBanner1();
+  outBanner();
 #endif
   outSectionHead(&version[0]);
   std::cout <<cline;
