@@ -20,3 +20,5 @@
 /beoh/beoh.dSYM
 /beoh/Makefile
 /beoh/*.dat
+*.*~
+*~
